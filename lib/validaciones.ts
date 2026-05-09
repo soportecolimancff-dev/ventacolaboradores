@@ -42,5 +42,6 @@ export type ErrorValidacion =
   | { tipo: "MONTO_EXCEDIDO"; montoMaximo: number; montoActual: number }
   | { tipo: "CANTIDAD_TOTAL_EXCEDIDA"; cantidadMaxima: number; cantidadActual: number }
   | { tipo: "PEDIDO_DUPLICADO" }
+  | { tipo: "COMPRAS_CERRADAS" }
   | { tipo: "PRODUCTO_NO_DISPONIBLE"; productoNombre: string }
   | { tipo: "STOCK_INSUFICIENTE"; productoNombre: string; disponible: number };

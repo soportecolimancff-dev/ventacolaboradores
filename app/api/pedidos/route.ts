@@ -12,8 +12,8 @@
  * Devuelve el pedido activo del empleado en esa sucursal para la semana.
  */
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/app/generated/prisma/client";
+import { prisma } from "../../../lib/prisma";
+import { Prisma } from "../../generated/prisma/client";
 import {
   CrearPedidoSchema,
   getMondayUTC,
