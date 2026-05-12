@@ -61,29 +61,31 @@ export default function ProductoCard({ producto, limiteCompra, cantidadMaxima }:
           <p className="text-xs text-gray-500">{producto.descripcion}</p>
         )}
 
-        <div className="mt-auto flex items-center justify-between pt-2">
+        <div className="mt-auto flex flex-col sm:flex-row items-center sm:justify-between gap-2 pt-2 w-full">
           <span className="text-lg font-extrabold text-green-700">
             ${producto.precio.toFixed(2)}
           </span>
 
-          {cantidad === 0 ? (
-            <button
-              onClick={handleAgregar}
-              disabled={!puedeAgregar}
-              className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition
-                hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
-            >
-              Agregar
-            </button>
-          ) : (
-            <ControlCantidad
-              cantidad={cantidad}
-              max={producto.maxCantidad}
-              puedeAgregar={puedeAgregar}
-              onSumar={handleAgregar}
-              onRestar={handleRestar}
-            />
-          )}
+          <div className="flex-shrink-0">
+            {cantidad === 0 ? (
+              <button
+                onClick={handleAgregar}
+                disabled={!puedeAgregar}
+                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition
+                  hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+              >
+                Agregar
+              </button>
+            ) : (
+              <ControlCantidad
+                cantidad={cantidad}
+                max={producto.maxCantidad}
+                puedeAgregar={puedeAgregar}
+                onSumar={handleAgregar}
+                onRestar={handleRestar}
+              />
+            )}
+          </div>
         </div>
 
         {cantidad === producto.maxCantidad && (
