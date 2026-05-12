@@ -6,6 +6,8 @@ import Link from "next/link";
 import AdminNav from "@/components/admin/AdminNav";
 import LogoutButton from "@/components/admin/LogoutButton";
 
+export const dynamic = "force-dynamic";
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-gray-100">
