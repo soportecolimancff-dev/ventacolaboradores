@@ -25,25 +25,17 @@ model Sucursal {
 }
 
 // ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
-enum UnidadVenta {
-  Pz
-  Kg
-}
-
-// ─────────────────────────────────────────────
 // PRODUCTO (catálogo maestro)
 // ─────────────────────────────────────────────
 model Producto {
-  id           Int         @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   nombre       String
-  unidad       UnidadVenta @default(Pz)
+  descripcion  String?
   imagenUrl    String?
-  maxCantidad  Int         @default(5)    // Máximo de kg/piezas por pedido (igual para todas las sucursales)
-  activo       Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  maxCantidad  Int      @default(5)    // Máximo de kg/piezas por pedido (igual para todas las sucursales)
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   sucursales  ProductoSucursal[]
   itemsPedido ItemPedido[]

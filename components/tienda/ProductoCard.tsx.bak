@@ -57,10 +57,9 @@ export default function ProductoCard({ producto, limiteCompra, cantidadMaxima }:
       {/* Info */}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="font-bold text-gray-900">{producto.nombre}</h3>
-        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium"
-          style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
-          {producto.unidad === "Kg" ? "Kilogramo" : "Pieza"}
-        </span>
+        {producto.descripcion && (
+          <p className="text-xs text-gray-500">{producto.descripcion}</p>
+        )}
 
         <div className="mt-auto flex flex-col sm:flex-row items-center sm:justify-between gap-2 pt-2 w-full">
           <span className="text-lg font-extrabold text-green-700">

@@ -11,7 +11,6 @@ import EmojiPicker from "./EmojiPicker";
 export interface ProductoBase {
   id: number;
   nombre: string;
-  unidad: "Pz" | "Kg";
   imagenUrl: string | null;
   activo: boolean;
 }
@@ -91,7 +90,7 @@ export default function CatalogoManager({
   const [seccion, setSeccion] = useState<"maestro" | "catalogo">("catalogo");
 
   // Maestro: crear producto
-  const [formNuevo, setFormNuevo] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5" });
+  const [formNuevo, setFormNuevo] = useState({ nombre: "", descripcion: "", imagenUrl: "", maxCantidad: "5" });
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
 
   // Catalogo: tab de sucursal activa
@@ -102,7 +101,7 @@ export default function CatalogoManager({
 
   // Maestro: edicion inline
   const [editandoMaestro, setEditandoMaestro] = useState<number | null>(null);
-  const [formEditar, setFormEditar] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5" });
+  const [formEditar, setFormEditar] = useState({ nombre: "", descripcion: "", imagenUrl: "", maxCantidad: "5" });
   // Maestro: confirmacion de borrado
   const [confirmandoBorrar, setConfirmandoBorrar] = useState<number | null>(null);
   // Catalogo: productos en proceso de activacion (no tienen item aun)
@@ -121,7 +120,7 @@ export default function CatalogoManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: formNuevo.nombre.trim(),
-          unidad: formNuevo.unidad,
+          descripcion: formNuevo.descripcion.trim() || undefined,
           imagenUrl: formNuevo.imagenUrl.trim() || null,
           maxCantidad,
         }),
@@ -129,18 +128,18 @@ export default function CatalogoManager({
       if (!res.ok) throw new Error();
       const nuevo: ProductoBase = await res.json();
       setProductos((prev) => [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5" });
+      setFormNuevo({ nombre: "", descripcion: "", imagenUrl: "", maxCantidad: "5" });
       setMostrarFormNuevo(false);
     } catch { setError("No se pudo crear el producto."); }
     finally { setSaving(null); }
   };
 
   // ── Maestro: iniciar / guardar / cancelar edicion ────────────────────────
-  const iniciarEdicionMaestro = (p: ProductoBase & { maxCantidad?: number }) => {
+  const iniciarEdicionMaestro = (p: ProductoBase & { descripcion?: string | null; maxCantidad?: number }) => {
     setEditandoMaestro(p.id);
     setFormEditar({
       nombre: p.nombre,
-      unidad: p.unidad,
+      descripcion: "",
       imagenUrl: p.imagenUrl ?? "",
       maxCantidad: String((p as { maxCantidad?: number }).maxCantidad ?? 5),
     });
@@ -160,7 +159,7 @@ export default function CatalogoManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: formEditar.nombre.trim(),
-          unidad: formEditar.unidad,
+          descripcion: formEditar.descripcion.trim() || null,
           imagenUrl: formEditar.imagenUrl.trim() || null,
           maxCantidad,
         }),
@@ -592,22 +591,10 @@ export default function CatalogoManager({
                               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
                           </div>
                           <div className="flex flex-col gap-1 sm:col-span-2">
-                            <label className="text-xs font-medium text-gray-600">Unidad de venta</label>
-                            <div className="flex gap-2">
-                              {(["Pz", "Kg"] as const).map((u) => (
-                                <button
-                                  key={u}
-                                  type="button"
-                                  onClick={() => setFormEditar((f) => ({ ...f, unidad: u }))}
-                                  className="rounded-lg px-4 py-2 text-sm font-semibold transition"
-                                  style={formEditar.unidad === u
-                                    ? { background: "#15803d", color: "#fff" }
-                                    : { background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}
-                                >
-                                  {u === "Pz" ? "Pieza (Pz)" : "Kilogramo (Kg)"}
-                                </button>
-                              ))}
-                            </div>
+                            <label className="text-xs font-medium text-gray-600">Descripcion</label>
+                            <input type="text" placeholder="Descripcion breve (opcional)" value={formEditar.descripcion}
+                              onChange={(e) => setFormEditar((f) => ({ ...f, descripcion: e.target.value }))}
+                              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
                           </div>
                           <div className="flex flex-col gap-1 sm:col-span-2">
                             <label className="text-xs font-medium text-gray-600">Icono</label>
@@ -653,10 +640,6 @@ export default function CatalogoManager({
                         <td className={`px-4 py-3 font-semibold ${p.activo ? "text-gray-800" : "text-gray-400"}`}>
                           <span className="mr-2 text-xl">{p.imagenUrl || "🍎"}</span>
                           {p.nombre}
-                          <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                            style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
-                            {p.unidad === "Kg" ? "Kilogramo" : "Pieza"}
-                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {p.activo ? (
@@ -721,23 +704,11 @@ export default function CatalogoManager({
                     onChange={(e) => setFormNuevo((f) => ({ ...f, maxCantidad: e.target.value }))}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-600">Unidad de venta <span className="text-red-500">*</span></label>
-                  <div className="flex gap-2">
-                    {(["Pz", "Kg"] as const).map((u) => (
-                      <button
-                        key={u}
-                        type="button"
-                        onClick={() => setFormNuevo((f) => ({ ...f, unidad: u }))}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold transition"
-                        style={formNuevo.unidad === u
-                          ? { background: "#15803d", color: "#fff" }
-                          : { background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}
-                      >
-                        {u === "Pz" ? "Pieza (Pz)" : "Kilogramo (Kg)"}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-xs font-medium text-gray-600">Descripcion</label>
+                  <input type="text" placeholder="Descripcion breve (opcional)" value={formNuevo.descripcion}
+                    onChange={(e) => setFormNuevo((f) => ({ ...f, descripcion: e.target.value }))}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div className="flex flex-col gap-1 sm:col-span-2">
                   <label className="text-xs font-medium text-gray-600">Icono del producto</label>
@@ -752,7 +723,7 @@ export default function CatalogoManager({
                   style={{ background: "#15803d", color: "#ffffff", boxShadow: "0 2px 8px rgba(21,128,61,0.3)" }}>
                   {saving === "crear-producto" ? "Guardando..." : "Guardar producto"}
                 </button>
-                <button onClick={() => { setMostrarFormNuevo(false); setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5" }); setError(null); }}
+                <button onClick={() => { setMostrarFormNuevo(false); setFormNuevo({ nombre: "", descripcion: "", imagenUrl: "", maxCantidad: "5" }); setError(null); }}
                   className="rounded-xl px-5 py-2 text-sm font-bold transition hover:opacity-90"
                   style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}>
                   Cancelar

@@ -38,7 +38,7 @@ export default async function CatalogoPage({ params }: Props) {
   const productosSucursal = await prisma.productoSucursal.findMany({
     where: { sucursalId: sucursal.id, semana, disponible: true },
     include: {
-      producto: { select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true } },
+      producto: { select: { id: true, nombre: true, descripcion: true, imagenUrl: true, maxCantidad: true } },
     },
     orderBy: { producto: { nombre: "asc" } },
   });
@@ -56,7 +56,7 @@ export default async function CatalogoPage({ params }: Props) {
     productoSucursalId: ps.id,
     productoId: ps.productoId,
     nombre: ps.producto.nombre,
-    unidad: ps.producto.unidad,
+    descripcion: ps.producto.descripcion,
     imagenUrl: ps.producto.imagenUrl,
     precio: Number(ps.precio),
     maxCantidad: ps.producto.maxCantidad,

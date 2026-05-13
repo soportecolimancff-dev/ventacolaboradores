@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 const CrearProductoSchema = z.object({
   nombre: z.string().min(1).max(100),
-  unidad: z.enum(["Pz", "Kg"]).default("Pz"),
+  descripcion: z.string().optional(),
   imagenUrl: z.string().optional().nullable(),
   maxCantidad: z.number().int().min(1).default(5),
 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const producto = await prisma.producto.create({
     data: parsed.data,
-    select: { id: true, nombre: true, unidad: true, imagenUrl: true, activo: true, maxCantidad: true },
+    select: { id: true, nombre: true, imagenUrl: true, activo: true, maxCantidad: true },
   });
 
   return Response.json(producto, { status: 201 });

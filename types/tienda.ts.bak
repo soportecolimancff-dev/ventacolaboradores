@@ -11,7 +11,7 @@ export interface ProductoCatalogo {
   productoSucursalId: number;
   productoId: number;
   nombre: string;
-  unidad: "Pz" | "Kg";
+  descripcion: string | null;
   imagenUrl: string | null;
   precio: number;
   maxCantidad: number;

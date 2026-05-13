@@ -46,8 +46,8 @@ async function main() {
       update: {},
       create: {
         nombre: "Manzana Roja",
-        unidad: "Kg",
-        imagenUrl: "🍎",
+        descripcion: "Manzana Red Delicious fresca",
+        imagenUrl: "/images/manzana-roja.webp",
         maxCantidad: 5,
       },
     }),
@@ -56,8 +56,8 @@ async function main() {
       update: {},
       create: {
         nombre: "Plátano Tabasco",
-        unidad: "Kg",
-        imagenUrl: "🍌",
+        descripcion: "Plátano maduro seleccionado",
+        imagenUrl: "/images/platano.webp",
         maxCantidad: 5,
       },
     }),
@@ -66,8 +66,8 @@ async function main() {
       update: {},
       create: {
         nombre: "Naranja Valencia",
-        unidad: "Kg",
-        imagenUrl: "🍊",
+        descripcion: "Naranja dulce para jugo",
+        imagenUrl: "/images/naranja.webp",
         maxCantidad: 5,
       },
     }),
@@ -76,8 +76,8 @@ async function main() {
       update: {},
       create: {
         nombre: "Uva Verde",
-        unidad: "Kg",
-        imagenUrl: "🍇",
+        descripcion: "Uva sin semilla, kilo",
+        imagenUrl: "/images/uva-verde.webp",
         maxCantidad: 5,
       },
     }),

@@ -40,7 +40,7 @@ export async function PATCH(
   const data: Record<string, unknown> = {};
   const d = parsed.data;
   if (d.nombre !== undefined) data.nombre = d.nombre;
-  if (d.unidad !== undefined) data.unidad = d.unidad;
+  if (d.descripcion !== undefined) data.descripcion = d.descripcion;
   if (d.imagenUrl !== undefined) data.imagenUrl = d.imagenUrl;
   if (d.maxCantidad !== undefined) data.maxCantidad = d.maxCantidad;
   if (d.activo !== undefined) data.activo = d.activo;
@@ -48,7 +48,7 @@ export async function PATCH(
   const producto = await prisma.producto.update({
     where: { id: productoId },
     data,
-    select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true, activo: true },
+    select: { id: true, nombre: true, descripcion: true, imagenUrl: true, maxCantidad: true, activo: true },
   });
 
   return Response.json(producto);
