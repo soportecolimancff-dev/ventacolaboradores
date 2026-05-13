@@ -9,51 +9,60 @@ import { useState, useRef, useEffect } from "react";
 
 // ── Catálogo completo de frutas y verduras ────────────────────────────────────
 const FRUTAS: { emoji: string; nombre: string }[] = [
+  // 🍎 Frutas (todas las disponibles con emoji)
   { emoji: "🍎", nombre: "Manzana roja" },
   { emoji: "🍏", nombre: "Manzana verde" },
-  { emoji: "🍊", nombre: "Naranja" },
+  { emoji: "🍐", nombre: "Pera" },
+  { emoji: "🍊", nombre: "Naranja / Mandarina" },
   { emoji: "🍋", nombre: "Limón" },
   { emoji: "🍋‍🟩", nombre: "Lima" },
   { emoji: "🍌", nombre: "Plátano" },
   { emoji: "🍉", nombre: "Sandía" },
   { emoji: "🍇", nombre: "Uvas" },
   { emoji: "🍓", nombre: "Fresa" },
-  { emoji: "🫐", nombre: "Arándanos" },
+  { emoji: "🫐", nombre: "Arándanos / Mora azul" },
   { emoji: "🍈", nombre: "Melón" },
-  { emoji: "🍑", nombre: "Durazno" },
+  { emoji: "🍑", nombre: "Durazno / Chabacano" },
   { emoji: "🍒", nombre: "Cerezas" },
   { emoji: "🍍", nombre: "Piña" },
   { emoji: "🥭", nombre: "Mango" },
   { emoji: "🥥", nombre: "Coco" },
-  { emoji: "🍅", nombre: "Tomate" },
+  { emoji: "🥝", nombre: "Kiwi" },
+  { emoji: "🍅", nombre: "Tomate" }, // botánicamente fruta
   { emoji: "🫒", nombre: "Aceituna" },
-  { emoji: "🍐", nombre: "Pera" },
-  { emoji: "🍠", nombre: "Camote" },
-  { emoji: "🫑", nombre: "Pimiento verde" },
-  { emoji: "🌶️", nombre: "Chile" },
   { emoji: "🥑", nombre: "Aguacate" },
+
+  // 🍅 Frutos que se usan como verdura
   { emoji: "🍆", nombre: "Berenjena" },
+  { emoji: "🫑", nombre: "Pimiento" },
+
+  // 🌶️ Chiles
+  { emoji: "🌶️", nombre: "Chile" },
+  { emoji: "🫑", nombre: "Chile verde" },
+
+  // 🥦 Verduras
   { emoji: "🥔", nombre: "Papa" },
+  { emoji: "🍠", nombre: "Camote" },
   { emoji: "🥕", nombre: "Zanahoria" },
   { emoji: "🌽", nombre: "Maíz" },
   { emoji: "🥦", nombre: "Brócoli" },
-  { emoji: "🥬", nombre: "Lechuga / Acelga" },
+  { emoji: "🥬", nombre: "Lechuga / Acelga / Col" },
   { emoji: "🥒", nombre: "Pepino" },
-  { emoji: "🫛", nombre: "Vaina / Ejote" },
-  { emoji: "🫚", nombre: "Aceite de oliva" },
+  { emoji: "🫛", nombre: "Ejote / Chícharo" },
   { emoji: "🧅", nombre: "Cebolla" },
   { emoji: "🧄", nombre: "Ajo" },
-  { emoji: "🍄", nombre: "Champiñón" },
+  { emoji: "🍄", nombre: "Champiñón / Hongo" },
+  { emoji: "🫚", nombre: "Jengibre" },
+
+  // 🌰 Legumbres y semillas
   { emoji: "🥜", nombre: "Cacahuate" },
   { emoji: "🫘", nombre: "Frijol" },
   { emoji: "🌰", nombre: "Castaña" },
-  { emoji: "🥝", nombre: "Kiwi" },
-  { emoji: "🍑", nombre: "Chabacano" },
-  { emoji: "🫐", nombre: "Mora azul" },
-  { emoji: "🍓", nombre: "Zarzamora" },
-  { emoji: "🌿", nombre: "Hierbas / Cilantro" },
-  { emoji: "🪴", nombre: "Planta / Aloe" },
+
+  // 🌿 Hierbas y extras
+  { emoji: "🌿", nombre: "Hierbas / Cilantro / Perejil" },
   { emoji: "🌱", nombre: "Brote / Germinado" },
+  { emoji: "🪴", nombre: "Planta" },
 ];
 
 interface Props {
