@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 const CrearProductoSchema = z.object({
   nombre: z.string().min(1).max(100),
   descripcion: z.string().optional(),
-  imagenUrl: z.string().url().optional().nullable(),
+  imagenUrl: z.string().optional().nullable(),
   maxCantidad: z.number().int().min(1).default(5),
 });
 
