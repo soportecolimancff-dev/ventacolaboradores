@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Producto" ADD COLUMN     "cantidadPorCaja" DOUBLE PRECISION NOT NULL DEFAULT 1;

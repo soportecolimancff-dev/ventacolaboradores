@@ -12,7 +12,7 @@ interface ItemPedidoAdmin {
   cantidad: number;
   precioUnit: number;
   subtotal: number;
-  producto: { nombre: string };
+  producto: { nombre: string; cantidadPorCaja: number; unidad: string };
 }
 
 interface PedidoAdmin {
@@ -57,6 +57,70 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
   );
   const [cargando, setCargando] = useState<number | null>(null);
 
+  // Edición de ítems de pedido (solo visible cuando sucursal seleccionada)
+  // pedidosLocal es una copia mutable de los pedidos para reflejar cambios inmediatamente
+  const [pedidosLocal, setPedidosLocal] = useState<PedidoAdmin[]>(pedidos);
+  const [editandoItem, setEditandoItem] = useState<Record<number, string>>({}); // itemId -> cantidad string
+  const [cargandoItem, setCargandoItem] = useState<number | null>(null); // itemId en operacion
+  const [totalesLocal, setTotalesLocal] = useState<Record<number, number>>(
+    Object.fromEntries(pedidos.map((p) => [p.id, p.total]))
+  );
+
+  const editarCantidadItem = async (pedidoId: number, itemId: number) => {
+    const nuevaCantStr = editandoItem[itemId];
+    const nuevaCant = parseInt(nuevaCantStr, 10);
+    if (isNaN(nuevaCant) || nuevaCant < 1) return;
+    setCargandoItem(itemId);
+    try {
+      const res = await fetch(`/api/admin/pedidos/${pedidoId}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cantidad: nuevaCant }),
+      });
+      if (!res.ok) return;
+      const data: { item: { id: number; cantidad: number; subtotal: number }; pedido: { id: number; total: number } } = await res.json();
+      setPedidosLocal((prev) =>
+        prev.map((p) =>
+          p.id !== pedidoId
+            ? p
+            : {
+                ...p,
+                total: data.pedido.total,
+                items: p.items.map((i) =>
+                  i.id !== itemId ? i : { ...i, cantidad: data.item.cantidad, subtotal: data.item.subtotal }
+                ),
+              }
+        )
+      );
+      setTotalesLocal((prev) => ({ ...prev, [pedidoId]: data.pedido.total }));
+      setEditandoItem((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
+    } finally {
+      setCargandoItem(null);
+    }
+  };
+
+  const eliminarItem = async (pedidoId: number, itemId: number) => {
+    setCargandoItem(itemId);
+    try {
+      const res = await fetch(`/api/admin/pedidos/${pedidoId}/items/${itemId}`, { method: "DELETE" });
+      if (!res.ok) return;
+      const data: { pedido: { id: number; total: number; estado: string } } = await res.json();
+      setPedidosLocal((prev) =>
+        prev.map((p) =>
+          p.id !== pedidoId
+            ? p
+            : { ...p, total: data.pedido.total, items: p.items.filter((i) => i.id !== itemId) }
+        )
+      );
+      setTotalesLocal((prev) => ({ ...prev, [pedidoId]: data.pedido.total }));
+      if (data.pedido.estado === "CANCELADO") {
+        setEstados((prev) => ({ ...prev, [pedidoId]: "CANCELADO" }));
+      }
+    } finally {
+      setCargandoItem(null);
+    }
+  };
+
   // Transiciones permitidas por estado actual
   const transiciones: Record<string, { label: string; estado: string; style: string }[]> = {
     PENDIENTE: [
@@ -64,7 +128,8 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
       { label: "Cancelar",   estado: "CANCELADO",  style: "bg-red-100 text-red-600 hover:bg-red-200" },
     ],
     CONFIRMADO: [
-      { label: "Marcar pagado", estado: "PAGADO", style: "bg-blue-100 text-blue-700 hover:bg-blue-200" },
+      { label: "Marcar pagado", estado: "PAGADO",    style: "bg-blue-100 text-blue-700 hover:bg-blue-200" },
+      { label: "Cancelar",      estado: "CANCELADO", style: "bg-red-100 text-red-600 hover:bg-red-200" },
     ],
     CANCELADO: [],
     PAGADO: [],
@@ -88,8 +153,8 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
 
   const pedidosFiltrados = useMemo(() => {
     const base = filtroSucursal === "todas"
-      ? pedidos
-      : pedidos.filter((p) => p.sucursal.nombre === filtroSucursal);
+      ? pedidosLocal
+      : pedidosLocal.filter((p) => p.sucursal.nombre === filtroSucursal);
     const q = search.trim().toLowerCase();
     // aplicar búsqueda
     const buscados = !q
@@ -104,7 +169,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
       const d = new Date(p.createdAt);
       return d >= weekRange.monday && d <= weekRange.sunday;
     });
-  }, [pedidos, filtroSucursal, search, weekRange]);
+  }, [pedidosLocal, filtroSucursal, search, weekRange]);
 
   const pedidosOrdenados = useMemo(() => {
     const arr = [...pedidosFiltrados];
@@ -129,6 +194,45 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     if (sortDir === "desc") arr.reverse();
     return arr;
   }, [pedidosFiltrados, sortBy, sortDir, estados]);
+
+  // ── Resumen de cajas por producto (solo cuando hay sucursal específica) ───
+  const resumenCajas = useMemo(() => {
+    if (filtroSucursal === "todas") return null;
+    const mapa: Record<number, {
+      productoId: number;
+      nombre: string;
+      unidad: string;
+      cantidadPorCaja: number;
+      totalUnidades: number;
+      cajasCompletas: number;
+      sobrante: number;
+    }> = {};
+
+    for (const pedido of pedidosFiltrados) {
+      for (const item of pedido.items) {
+        const pid = item.productoId;
+        if (!mapa[pid]) {
+          mapa[pid] = {
+            productoId: pid,
+            nombre: item.producto.nombre,
+            unidad: item.producto.unidad,
+            cantidadPorCaja: item.producto.cantidadPorCaja,
+            totalUnidades: 0,
+            cajasCompletas: 0,
+            sobrante: 0,
+          };
+        }
+        mapa[pid].totalUnidades += item.cantidad;
+      }
+    }
+
+    for (const row of Object.values(mapa)) {
+      row.cajasCompletas = Math.floor(row.totalUnidades / row.cantidadPorCaja);
+      row.sobrante = row.totalUnidades % row.cantidadPorCaja;
+    }
+
+    return Object.values(mapa).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [pedidosFiltrados, filtroSucursal]);
 
   // ── Utilidades de semana ────────────────────────────────────────────────────
   function getWeekNumber(d: Date): number {
@@ -347,6 +451,78 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
         </div>
       </div>
 
+      {/* ── Resumen de cajas por sucursal ─────────────────────────────────── */}
+      {resumenCajas && (
+        <div className="rounded-2xl border border-green-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-green-100" style={{ background: "#f0fdf4" }}>
+            <div>
+              <h2 className="text-sm font-extrabold text-green-800">📦 Cajas requeridas — {filtroSucursal}</h2>
+              <p className="text-xs text-green-600 mt-0.5">Basado en los {pedidosFiltrados.length} pedido{pedidosFiltrados.length !== 1 ? "s" : ""} de la semana en esta sucursal</p>
+            </div>
+          </div>
+
+          {resumenCajas.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-gray-400">No hay pedidos para esta sucursal esta semana.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-xs font-semibold uppercase tracking-wide text-gray-400 bg-gray-50">
+                <tr>
+                  <th className="px-5 py-2.5 text-left">Producto</th>
+                  <th className="px-5 py-2.5 text-right">Total pedido</th>
+                  <th className="px-5 py-2.5 text-right">Por caja</th>
+                  <th className="px-5 py-2.5 text-right">Cajas completas</th>
+                  <th className="px-5 py-2.5 text-right">Sobrante</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {resumenCajas.map((row) => (
+                  <tr key={row.productoId} className="hover:bg-green-50/30">
+                    <td className="px-5 py-3 font-medium text-gray-800">{row.nombre}</td>
+                    <td className="px-5 py-3 text-right text-gray-600">
+                      {row.totalUnidades} {row.unidad === "Kg" ? "kg" : "pz"}
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-400 text-xs">
+                      {row.cantidadPorCaja} {row.unidad === "Kg" ? "kg" : "pz"}/caja
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-sm font-extrabold"
+                        style={row.cajasCompletas > 0
+                          ? { background: "#dcfce7", color: "#15803d", border: "1.5px solid #86efac" }
+                          : { background: "#f3f4f6", color: "#9ca3af" }}
+                      >
+                        📦 {row.cajasCompletas}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {row.sobrante > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                          style={{ background: "#fef3c7", color: "#b45309", border: "1px solid #fde68a" }}>
+                          +{row.sobrante} {row.unidad === "Kg" ? "kg" : "pz"}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-green-100 bg-green-50/40">
+                  <td colSpan={3} className="px-5 py-2.5 text-xs font-semibold text-green-700">
+                    Total de cajas a surtir
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-sm font-extrabold text-green-700">
+                    📦 {resumenCajas.reduce((s, r) => s + r.cajasCompletas, 0)}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      )}
+
       {/* Tabla */}
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -393,7 +569,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                   </td>
                   <td className="px-4 py-3 text-gray-500">{p.sucursal.nombre}</td>
                   <td className="px-4 py-3 font-bold text-green-700">
-                    ${p.total.toFixed(2)}
+                    ${(totalesLocal[p.id] ?? p.total).toFixed(2)}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -436,29 +612,100 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         <div className="flex-1">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                            {p.items.length} producto{p.items.length !== 1 ? "s" : ""} en el pedido
+                            {pedidosLocal.find((x) => x.id === p.id)?.items.length ?? p.items.length} producto{(pedidosLocal.find((x) => x.id === p.id)?.items.length ?? p.items.length) !== 1 ? "s" : ""} en el pedido
                           </p>
                           <ul className="space-y-2">
-                            {p.items.map((item) => (
-                              <li key={item.id} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
-                                    {item.cantidad}
-                                  </span>
-                                  <span className="text-gray-700">{item.producto.nombre}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="font-semibold text-gray-800">${item.subtotal.toFixed(2)}</span>
-                                  <span className="ml-2 text-xs text-gray-400">${item.precioUnit.toFixed(2)}/u</span>
-                                </div>
-                              </li>
-                            ))}
+                            {(pedidosLocal.find((x) => x.id === p.id)?.items ?? p.items).map((item) => {
+                              const enEdicion = editandoItem[item.id] !== undefined;
+                              const cargando_ = cargandoItem === item.id;
+                              return (
+                                <li key={item.id} className="flex items-center justify-between text-sm gap-3">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    {filtroSucursal !== "todas" && enEdicion && estados[p.id] === "PENDIENTE" ? (
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={editandoItem[item.id]}
+                                        onChange={(e) =>
+                                          setEditandoItem((prev) => ({ ...prev, [item.id]: e.target.value }))
+                                        }
+                                        className="w-16 rounded-lg border border-green-400 px-2 py-0.5 text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") editarCantidadItem(p.id, item.id);
+                                          if (e.key === "Escape") setEditandoItem((prev) => { const n = { ...prev }; delete n[item.id]; return n; });
+                                        }}
+                                      />
+                                    ) : (
+                                      <span
+                                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${filtroSucursal !== "todas" && estados[p.id] === "PENDIENTE" ? "cursor-pointer hover:ring-2 hover:ring-green-400" : ""} bg-green-100 text-green-700`}
+                                        title={filtroSucursal !== "todas" && estados[p.id] === "PENDIENTE" ? "Clic para editar cantidad" : undefined}
+                                        onClick={filtroSucursal !== "todas" && estados[p.id] === "PENDIENTE" ? () => setEditandoItem((prev) => ({ ...prev, [item.id]: String(item.cantidad) })) : undefined}
+                                      >
+                                        {item.cantidad}
+                                      </span>
+                                    )}
+                                    <span className="text-gray-700">{item.producto.nombre}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-right">
+                                    <div>
+                                      <span className="font-semibold text-gray-800">${item.subtotal.toFixed(2)}</span>
+                                      <span className="ml-2 text-xs text-gray-400">${item.precioUnit.toFixed(2)}/u</span>
+                                    </div>
+                                    {filtroSucursal !== "todas" && estados[p.id] === "PENDIENTE" && (
+                                      <div className="flex gap-1">
+                                        {enEdicion ? (
+                                          <>
+                                            <button
+                                              disabled={cargando_}
+                                              onClick={() => editarCantidadItem(p.id, item.id)}
+                                              className="rounded px-2 py-0.5 text-xs font-bold disabled:opacity-40"
+                                              style={{ background: "#15803d", color: "#fff" }}
+                                            >
+                                              {cargando_ ? "..." : "✓"}
+                                            </button>
+                                            <button
+                                              onClick={() => setEditandoItem((prev) => { const n = { ...prev }; delete n[item.id]; return n; })}
+                                              className="rounded px-2 py-0.5 text-xs font-bold"
+                                              style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}
+                                            >
+                                              ✕
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button
+                                              disabled={cargando_}
+                                              onClick={() => setEditandoItem((prev) => ({ ...prev, [item.id]: String(item.cantidad) }))}
+                                              className="rounded px-2 py-0.5 text-xs font-bold transition disabled:opacity-40"
+                                              style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}
+                                              title="Editar cantidad"
+                                            >
+                                              ✏️
+                                            </button>
+                                            <button
+                                              disabled={cargando_}
+                                              onClick={() => eliminarItem(p.id, item.id)}
+                                              className="rounded px-2 py-0.5 text-xs font-bold transition disabled:opacity-40"
+                                              style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}
+                                              title="Eliminar producto del pedido"
+                                            >
+                                              🗑️
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                         <div className="shrink-0 rounded-xl border border-green-200 bg-white px-5 py-3 text-right">
                           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total pedido</p>
-                          <p className="text-2xl font-extrabold text-green-700">${p.total.toFixed(2)}</p>
-                          {/* <p className="mt-1 text-xs text-gray-400">{p.emailEmpleado ?? "—"}</p> */}
+                          <p className="text-2xl font-extrabold text-green-700">${(totalesLocal[p.id] ?? p.total).toFixed(2)}</p>
                         </div>
                       </div>
                     </td>

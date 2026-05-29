@@ -14,6 +14,7 @@ export interface ProductoBase {
   unidad: "Pz" | "Kg";
   imagenUrl: string | null;
   activo: boolean;
+  cantidadPorCaja: number;
 }
 
 export interface SucursalBase {
@@ -91,7 +92,7 @@ export default function CatalogoManager({
   const [seccion, setSeccion] = useState<"maestro" | "catalogo">("catalogo");
 
   // Maestro: crear producto
-  const [formNuevo, setFormNuevo] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5" });
+  const [formNuevo, setFormNuevo] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5", cantidadPorCaja: "1" });
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
 
   // Catalogo: tab de sucursal activa
@@ -102,7 +103,7 @@ export default function CatalogoManager({
 
   // Maestro: edicion inline
   const [editandoMaestro, setEditandoMaestro] = useState<number | null>(null);
-  const [formEditar, setFormEditar] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5" });
+  const [formEditar, setFormEditar] = useState({ nombre: "", unidad: "Pz" as "Pz" | "Kg", imagenUrl: "", maxCantidad: "5", cantidadPorCaja: "1" });
   // Maestro: confirmacion de borrado
   const [confirmandoBorrar, setConfirmandoBorrar] = useState<number | null>(null);
   // Catalogo: productos en proceso de activacion (no tienen item aun)
@@ -114,6 +115,8 @@ export default function CatalogoManager({
     if (!formNuevo.nombre.trim()) { setError("El nombre es obligatorio."); return; }
     const maxCantidad = parseInt(formNuevo.maxCantidad, 10);
     if (isNaN(maxCantidad) || maxCantidad < 1) { setError("Max. cantidad debe ser >= 1."); return; }
+    const cantidadPorCaja = parseInt(formNuevo.cantidadPorCaja, 10);
+    if (isNaN(cantidadPorCaja) || cantidadPorCaja < 1) { setError("Cantidad por caja debe ser un entero >= 1."); return; }
     setSaving("crear-producto"); setError(null);
     try {
       const res = await fetch("/api/admin/productos", {
@@ -124,12 +127,13 @@ export default function CatalogoManager({
           unidad: formNuevo.unidad,
           imagenUrl: formNuevo.imagenUrl.trim() || null,
           maxCantidad,
+          cantidadPorCaja,
         }),
       });
       if (!res.ok) throw new Error();
       const nuevo: ProductoBase = await res.json();
       setProductos((prev) => [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5" });
+      setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5", cantidadPorCaja: "1" });
       setMostrarFormNuevo(false);
     } catch { setError("No se pudo crear el producto."); }
     finally { setSaving(null); }
@@ -143,6 +147,7 @@ export default function CatalogoManager({
       unidad: p.unidad,
       imagenUrl: p.imagenUrl ?? "",
       maxCantidad: String((p as { maxCantidad?: number }).maxCantidad ?? 5),
+      cantidadPorCaja: String(p.cantidadPorCaja ?? 1),
     });
     setError(null);
   };
@@ -153,6 +158,8 @@ export default function CatalogoManager({
     if (!formEditar.nombre.trim()) { setError("El nombre es obligatorio."); return; }
     const maxCantidad = parseInt(formEditar.maxCantidad, 10);
     if (isNaN(maxCantidad) || maxCantidad < 1) { setError("Max. cantidad debe ser >= 1."); return; }
+    const cantidadPorCaja = parseInt(formEditar.cantidadPorCaja, 10);
+    if (isNaN(cantidadPorCaja) || cantidadPorCaja < 1) { setError("Cantidad por caja debe ser un entero >= 1."); return; }
     setSaving(`editar-maestro-${productoId}`); setError(null);
     try {
       const res = await fetch(`/api/admin/productos/${productoId}`, {
@@ -163,6 +170,7 @@ export default function CatalogoManager({
           unidad: formEditar.unidad,
           imagenUrl: formEditar.imagenUrl.trim() || null,
           maxCantidad,
+          cantidadPorCaja,
         }),
       });
       if (!res.ok) throw new Error();
@@ -565,19 +573,20 @@ export default function CatalogoManager({
               <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3 text-left">Producto</th>
+                  <th className="px-4 py-3 text-right">Cant. por caja</th>
                   <th className="px-4 py-3 text-center">Estado</th>
                   <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {productos.length === 0 && (
-                  <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">No hay productos registrados.</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">No hay productos registrados.</td></tr>
                 )}
                 {productos.map((p) => (
                   <tr key={p.id} className={`transition-colors ${p.activo ? "hover:bg-green-50/20" : "bg-gray-50/60"}`}>
                     {editandoMaestro === p.id ? (
                       /* ── Fila de edición inline ── */
-                      <td colSpan={3} className="px-4 py-4">
+                      <td colSpan={4} className="px-4 py-4">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="flex flex-col gap-1">
                             <label className="text-xs font-medium text-gray-600">Nombre *</label>
@@ -589,6 +598,12 @@ export default function CatalogoManager({
                             <label className="text-xs font-medium text-gray-600">Max. cantidad</label>
                             <input type="number" min="1" value={formEditar.maxCantidad}
                               onChange={(e) => setFormEditar((f) => ({ ...f, maxCantidad: e.target.value }))}
+                              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-medium text-gray-600">Cantidad por caja</label>
+                            <input type="number" min="1" step="1" value={formEditar.cantidadPorCaja}
+                              onChange={(e) => setFormEditar((f) => ({ ...f, cantidadPorCaja: e.target.value }))}
                               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
                           </div>
                           <div className="flex flex-col gap-1 sm:col-span-2">
@@ -631,7 +646,7 @@ export default function CatalogoManager({
                       </td>
                     ) : confirmandoBorrar === p.id ? (
                       /* ── Fila de confirmación de borrado ── */
-                      <td colSpan={3} className="px-4 py-3">
+                      <td colSpan={4} className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <span className="text-sm text-red-700 font-medium">¿Eliminar <strong>{p.nombre}</strong>? Esta acción no se puede deshacer.</span>
                           <button onClick={() => eliminarProducto(p.id)}
@@ -657,6 +672,9 @@ export default function CatalogoManager({
                             style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
                             {p.unidad === "Kg" ? "Kilogramo" : "Pieza"}
                           </span>
+                        </td>
+                        <td className={`px-4 py-3 text-right text-sm ${p.activo ? "text-gray-700" : "text-gray-400"}`}>
+                          {p.cantidadPorCaja} {p.unidad === "Kg" ? "kg" : "pz"}/caja
                         </td>
                         <td className="px-4 py-3 text-center">
                           {p.activo ? (
@@ -722,6 +740,13 @@ export default function CatalogoManager({
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-600">Cantidad por caja <span className="text-red-500">*</span></label>
+                  <input type="number" min="1" step="1" value={formNuevo.cantidadPorCaja}
+                    onChange={(e) => setFormNuevo((f) => ({ ...f, cantidadPorCaja: e.target.value }))}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Ej. 10 (kg) o 24 (piezas)" />
+                </div>
+                <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-600">Unidad de venta <span className="text-red-500">*</span></label>
                   <div className="flex gap-2">
                     {(["Pz", "Kg"] as const).map((u) => (
@@ -752,7 +777,7 @@ export default function CatalogoManager({
                   style={{ background: "#15803d", color: "#ffffff", boxShadow: "0 2px 8px rgba(21,128,61,0.3)" }}>
                   {saving === "crear-producto" ? "Guardando..." : "Guardar producto"}
                 </button>
-                <button onClick={() => { setMostrarFormNuevo(false); setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5" }); setError(null); }}
+                <button onClick={() => { setMostrarFormNuevo(false); setFormNuevo({ nombre: "", unidad: "Pz", imagenUrl: "", maxCantidad: "5", cantidadPorCaja: "1" }); setError(null); }}
                   className="rounded-xl px-5 py-2 text-sm font-bold transition hover:opacity-90"
                   style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db" }}>
                   Cancelar

@@ -36,14 +36,15 @@ enum UnidadVenta {
 // PRODUCTO (catálogo maestro)
 // ─────────────────────────────────────────────
 model Producto {
-  id           Int         @id @default(autoincrement())
-  nombre       String
-  unidad       UnidadVenta @default(Pz)
-  imagenUrl    String?
-  maxCantidad  Int         @default(5)    // Máximo de kg/piezas por pedido (igual para todas las sucursales)
-  activo       Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               Int         @id @default(autoincrement())
+  nombre           String
+  unidad           UnidadVenta @default(Pz)
+  imagenUrl        String?
+  maxCantidad      Int         @default(5)    // Máximo de kg/piezas por pedido (igual para todas las sucursales)
+  cantidadPorCaja  Float       @default(1)    // Kilos o piezas que conforman una caja del producto
+  activo           Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   sucursales  ProductoSucursal[]
   itemsPedido ItemPedido[]

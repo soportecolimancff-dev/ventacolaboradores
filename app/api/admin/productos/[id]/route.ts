@@ -12,11 +12,13 @@ const BodySchema = z
     unidad: z.enum(["Pz", "Kg"]).optional(),
     imagenUrl: z.string().optional().nullable(),
     maxCantidad: z.number().int().min(1).optional(),
+    cantidadPorCaja: z.number().int().min(1).optional(),
     activo: z.boolean().optional(),
   })
   .refine(
     (d) =>
       d.maxCantidad !== undefined ||
+      d.cantidadPorCaja !== undefined ||
       d.activo !== undefined ||
       d.nombre !== undefined ||
       d.unidad !== undefined ||
@@ -43,12 +45,13 @@ export async function PATCH(
   if (d.unidad !== undefined) data.unidad = d.unidad;
   if (d.imagenUrl !== undefined) data.imagenUrl = d.imagenUrl;
   if (d.maxCantidad !== undefined) data.maxCantidad = d.maxCantidad;
+  if (d.cantidadPorCaja !== undefined) data.cantidadPorCaja = d.cantidadPorCaja;
   if (d.activo !== undefined) data.activo = d.activo;
 
   const producto = await prisma.producto.update({
     where: { id: productoId },
     data,
-    select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true, activo: true },
+    select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true, cantidadPorCaja: true, activo: true },
   });
 
   return Response.json(producto);

@@ -21,7 +21,7 @@ export default async function AdminCatalogoPage() {
       orderBy: [{ sucursal: { nombre: "asc" } }, { producto: { nombre: "asc" } }],
     }),
     prisma.producto.findMany({
-      select: { id: true, nombre: true, unidad: true, imagenUrl: true, activo: true },
+      select: { id: true, nombre: true, unidad: true, imagenUrl: true, activo: true, cantidadPorCaja: true },
       orderBy: { nombre: "asc" },
     }),
     prisma.sucursal.findMany({

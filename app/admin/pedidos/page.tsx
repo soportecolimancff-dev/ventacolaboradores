@@ -17,7 +17,11 @@ export default async function AdminPedidosPage() {
       include: {
         sucursal: { select: { nombre: true } },
         items: {
-          include: { producto: { select: { nombre: true } } },
+          include: {
+            producto: {
+              select: { nombre: true, cantidadPorCaja: true, unidad: true },
+            },
+          },
         },
       },
       orderBy: [{ sucursal: { nombre: "asc" } }, { createdAt: "desc" }],

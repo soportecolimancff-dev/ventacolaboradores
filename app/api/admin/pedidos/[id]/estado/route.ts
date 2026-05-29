@@ -17,7 +17,7 @@ const BodySchema = z.object({
 // Mapa de transiciones permitidas
 const TRANSICIONES: Record<string, string[]> = {
   PENDIENTE:  ["CONFIRMADO", "CANCELADO"],
-  CONFIRMADO: ["PAGADO"],
+  CONFIRMADO: ["PAGADO", "CANCELADO"],
   CANCELADO:  [],
   PAGADO:     [],
 };
