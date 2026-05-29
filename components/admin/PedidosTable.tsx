@@ -209,6 +209,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     }> = {};
 
     for (const pedido of pedidosFiltrados) {
+      if ((estados[pedido.id] ?? pedido.estado) === "CANCELADO") continue;
       for (const item of pedido.items) {
         const pid = item.productoId;
         if (!mapa[pid]) {
@@ -232,7 +233,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     }
 
     return Object.values(mapa).sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [pedidosFiltrados, filtroSucursal]);
+  }, [pedidosFiltrados, filtroSucursal, estados]);
 
   // ── Utilidades de semana ────────────────────────────────────────────────────
   function getWeekNumber(d: Date): number {
