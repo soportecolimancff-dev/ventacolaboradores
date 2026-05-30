@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Footer */}
         <div className="mx-4 h-px bg-white/10" />
-        <div className="flex items-center gap-2 px-5 py-4">
+        <div className="flex items-center gap-2 px-5 py-3">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime-400 opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime-400" />
@@ -50,6 +50,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="ml-auto">
             <LogoutButton />
           </div>
+        </div>
+        <div className="px-5 pb-5 space-y-0.5">
+          <p className="text-[10px] font-semibold text-green-300/80">© 2026 Coliman Frutas Finas</p>
+          <p className="text-[10px] text-green-400/60">Dev: Luis Miguel Martínez · Dept. TI</p>
+          <a
+            href="mailto:servicios.ti@coliman.com"
+            className="block text-[10px] text-green-400/50 hover:text-green-300 transition-colors truncate"
+          >
+            servicios.ti@coliman.com
+          </a>
         </div>
       </aside>
 
