@@ -3,7 +3,7 @@
  * components/admin/PedidosTable.tsx
  * Tabla de pedidos con filtro por sucursal y cambio de estado.
  */
-import { useState, Fragment, useMemo } from "react";
+import { useState, Fragment, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
 
 interface ItemPedidoAdmin {
@@ -60,6 +60,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
   // Edición de ítems de pedido (solo visible cuando sucursal seleccionada)
   // pedidosLocal es una copia mutable de los pedidos para reflejar cambios inmediatamente
   const [pedidosLocal, setPedidosLocal] = useState<PedidoAdmin[]>(pedidos);
+  const [cargandoSemana, setCargandoSemana] = useState(false);
   const [editandoItem, setEditandoItem] = useState<Record<number, string>>({}); // itemId -> cantidad string
   const [cargandoItem, setCargandoItem] = useState<number | null>(null); // itemId en operacion
   const [totalesLocal, setTotalesLocal] = useState<Record<number, number>>(
@@ -135,6 +136,43 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     PAGADO: [],
   };
 
+  // Calcula el lunes UTC de la semana seleccionada (para hacer fetch al API)
+  const semanaUTC = useMemo(() => {
+    const today = new Date();
+    const base = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    base.setUTCDate(base.getUTCDate() + weekOffset * 7);
+    const day = base.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    base.setUTCDate(base.getUTCDate() + diff);
+    return base;
+  }, [weekOffset]);
+
+  // Cuando cambia la semana, cargar pedidos del API
+  useEffect(() => {
+    if (weekOffset === 0) return; // semana actual ya la cargó el servidor
+    const semanaStr = semanaUTC.toISOString().slice(0, 10);
+    setCargandoSemana(true);
+    fetch(`/api/admin/pedidos?semana=${semanaStr}`)
+      .then((r) => r.json())
+      .then((data: PedidoAdmin[]) => {
+        setPedidosLocal(data);
+        setEstados(Object.fromEntries(data.map((p) => [p.id, p.estado])));
+        setTotalesLocal(Object.fromEntries(data.map((p) => [p.id, Number(p.total)])));
+        setExpandido(null);
+      })
+      .catch(() => {})
+      .finally(() => setCargandoSemana(false));
+  }, [semanaUTC, weekOffset]);
+
+  // Al volver a semana 0, restaurar datos iniciales del servidor
+  useEffect(() => {
+    if (weekOffset !== 0) return;
+    setPedidosLocal(pedidos);
+    setEstados(Object.fromEntries(pedidos.map((p) => [p.id, p.estado])));
+    setTotalesLocal(Object.fromEntries(pedidos.map((p) => [p.id, p.total])));
+    setExpandido(null);
+  }, [weekOffset]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const weekRange = useMemo(() => {
     const today = new Date();
     const ref = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -164,11 +202,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
             p.nombreEmpleado.toLowerCase().includes(q) ||
             p.noEmpleado.toLowerCase().includes(q)
         );
-    // filtrar por semana usando weekRange
-    return buscados.filter((p) => {
-      const d = new Date(p.createdAt);
-      return d >= weekRange.monday && d <= weekRange.sunday;
-    });
+    return buscados;
   }, [pedidosLocal, filtroSucursal, search, weekRange]);
 
   const pedidosOrdenados = useMemo(() => {
@@ -400,7 +434,10 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
           >
             ←
           </button>
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-gray-600 flex items-center gap-1.5">
+            {cargandoSemana && (
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-green-600" />
+            )}
             Semana: <span className="font-semibold text-gray-800">{formatShortDate(weekRange.monday)} — {formatShortDate(weekRange.sunday)}</span>
           </div>
           <button

@@ -22,11 +22,20 @@ export async function GET(req: NextRequest) {
     include: {
       sucursal: { select: { nombre: true } },
       items: {
-        include: { producto: { select: { nombre: true } } },
+        include: { producto: { select: { nombre: true, cantidadPorCaja: true, unidad: true } } },
       },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return Response.json(pedidos);
+  const pedidosSerial = pedidos.map((p) => ({
+    ...p,
+    total: Number(p.total),
+    items: p.items.map((i) => ({
+      ...i,
+      precioUnit: Number(i.precioUnit),
+      subtotal: Number(i.subtotal),
+    })),
+  }));
+  return Response.json(pedidosSerial);
 }
