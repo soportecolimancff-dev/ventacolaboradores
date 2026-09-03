@@ -326,7 +326,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
               <div>
                 <label className="mb-1 block text-sm font-semibold text-gray-700">
                   Correo electronico{" "}
-                  <span className="font-normal text-gray-400">(opcional, para notificaciones)</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
