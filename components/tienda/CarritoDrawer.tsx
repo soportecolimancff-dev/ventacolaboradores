@@ -32,6 +32,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
   const [noEmpleado, setNoEmpleado] = useState("");
   const [nombreEmpleado, setNombreEmpleado] = useState("");
   const [emailEmpleado, setEmailEmpleado] = useState("");
+  const [telefonoEmpleado, setTelefonoEmpleado] = useState("");
   const [erroresCampos, setErroresCampos] = useState<Record<string, string>>({});
 
   const superoLimite = limiteCompra !== null && total > limiteCompra;
@@ -41,6 +42,9 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
     const errs: Record<string, string> = {};
     if (!noEmpleado.trim()) errs.noEmpleado = "El numero de empleado es requerido";
     if (nombreEmpleado.trim().length < 2) errs.nombreEmpleado = "Ingresa tu nombre completo";
+    if (!telefonoEmpleado.trim() || telefonoEmpleado.trim().length < 10) {
+      errs.telefonoEmpleado = "Ingresa un telefono valido (10 digitos)";
+    }
     if (emailEmpleado.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEmpleado.trim())) {
       errs.emailEmpleado = "Correo invalido";
     }
@@ -67,6 +71,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
           noEmpleado: noEmpleado.trim(),
           nombreEmpleado: nombreEmpleado.trim(),
           emailEmpleado: emailEmpleado.trim() || undefined,
+          telefonoEmpleado: telefonoEmpleado.trim(),
           sucursalId,
           items: items.map((i) => ({
             productoSucursalId: i.productoSucursalId,
@@ -83,6 +88,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
           noEmpleado: noEmpleado.trim(),
           nombreEmpleado: nombreEmpleado.trim(),
           emailEmpleado: emailEmpleado.trim() || undefined,
+          telefonoEmpleado: telefonoEmpleado.trim(),
           sucursal: sucursalNombre,
           items: items.map((i) => ({ nombre: i.nombre, precio: i.precio, cantidad: i.cantidad })),
           total,
@@ -133,6 +139,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
       setNoEmpleado("");
       setNombreEmpleado("");
       setEmailEmpleado("");
+      setTelefonoEmpleado("");
       setPedidoSnapshot(null);
     }
   };
@@ -319,6 +326,25 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
                 />
                 {erroresCampos.nombreEmpleado && (
                   <p className="mt-1 text-xs text-red-500">{erroresCampos.nombreEmpleado}</p>
+                )}
+              </div>
+
+              {/* Telefono */}
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-gray-700">
+                  Telefono <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={telefonoEmpleado}
+                  onChange={(e) => setTelefonoEmpleado(e.target.value)}
+                  placeholder="Ej. 6861234567"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-400 ${
+                    erroresCampos.telefonoEmpleado ? "border-red-400 bg-red-50" : "border-gray-200"
+                  }`}
+                />
+                {erroresCampos.telefonoEmpleado && (
+                  <p className="mt-1 text-xs text-red-500">{erroresCampos.telefonoEmpleado}</p>
                 )}
               </div>
 

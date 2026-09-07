@@ -95,6 +95,7 @@ model Pedido {
   noEmpleado      String                    // Número interno de la empresa
   nombreEmpleado  String                    // Nombre capturado al confirmar
   emailEmpleado   String?                   // Correo opcional para notificaciones
+  telefonoEmpleado String?                  // Teléfono opcional en BD (obligatorio a nivel de formulario)
   sucursalId      Int
   semana          DateTime                  // Lunes de la semana en que se realizó
   total           Decimal      @db.Decimal(10, 2)

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  const { noEmpleado, nombreEmpleado, emailEmpleado, sucursalId, items } = parsed.data;
+  const { noEmpleado, nombreEmpleado, emailEmpleado, telefonoEmpleado, sucursalId, items } = parsed.data;
   const semana = getMondayUTC();
 
   const sucursal = await prisma.sucursal.findUnique({ where: { id: sucursalId } });
@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
           noEmpleado,
           nombreEmpleado,
           emailEmpleado: emailEmpleado || null,
+          telefonoEmpleado,
           sucursalId,
           semana,
           total,

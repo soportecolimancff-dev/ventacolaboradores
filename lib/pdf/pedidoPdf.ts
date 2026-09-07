@@ -10,6 +10,7 @@ export interface DatosPedidoPdf {
   noEmpleado: string;
   nombreEmpleado: string;
   emailEmpleado?: string;
+  telefonoEmpleado: string;
   sucursal: string;
   items: Pick<ItemCarrito, "nombre" | "precio" | "cantidad">[];
   total: number;
@@ -404,13 +405,17 @@ export async function generarPdfPedido(datos: DatosPedidoPdf): Promise<void> {
   // ════════════════════════════════════════════════════════════════════════════
   // CORREO (opcional)
   // ════════════════════════════════════════════════════════════════════════════
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...SUBTEXTO);
+  doc.text(`Teléfono registrado: ${datos.telefonoEmpleado}`, M, y + 4.5);
+  y += 6.5;
+
   if (datos.emailEmpleado) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...SUBTEXTO);
     doc.text(`Correo registrado: ${datos.emailEmpleado}`, M, y + 4.5);
-    y += 10;
+    y += 6.5;
   }
+  y += 3.5;
 
   // ════════════════════════════════════════════════════════════════════════════
   // PIE DE PÁGINA
