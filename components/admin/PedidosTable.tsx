@@ -308,24 +308,28 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     ];
 
     // Resumen consolidado de productos (suma por producto)
-    const consolidado: Record<string, { producto: string; cantidad: number; total: number }> = {};
+    const consolidado: Record<string, { producto: string; cantidad: number; total: number; cantidadPorCaja: number }> = {};
     for (const pedido of pagados) {
       for (const item of pedido.items) {
         const k = item.producto.nombre;
-        if (!consolidado[k]) consolidado[k] = { producto: k, cantidad: 0, total: 0 };
+        if (!consolidado[k]) {
+          consolidado[k] = { producto: k, cantidad: 0, total: 0, cantidadPorCaja: item.producto.cantidadPorCaja };
+        }
         consolidado[k].cantidad += item.cantidad;
         consolidado[k].total += item.subtotal;
       }
     }
 
     portadaData.push(["── CONSOLIDADO DE PRODUCTOS ──"]);
-    portadaData.push(["Producto", "Piezas totales", "Subtotal ($)"]);
+    portadaData.push(["Producto", "Piezas totales", "Cajas completas", "Sobrante", "Subtotal ($)"]);
     for (const v of Object.values(consolidado).sort((a, b) => b.cantidad - a.cantidad)) {
-      portadaData.push([v.producto, v.cantidad, v.total]);
+      const cajasCompletas = Math.floor(v.cantidad / v.cantidadPorCaja);
+      const sobrante = v.cantidad % v.cantidadPorCaja;
+      portadaData.push([v.producto, v.cantidad, cajasCompletas, sobrante, v.total]);
     }
 
     const wsPortada = XLSX.utils.aoa_to_sheet(portadaData);
-    wsPortada["!cols"] = [{ wch: 34 }, { wch: 22 }, { wch: 16 }];
+    wsPortada["!cols"] = [{ wch: 34 }, { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 16 }];
 
     // ── Hoja 2: Detalle de picking por pedido ────────────────────────────────
     const pickingData: (string | number | null)[][] = [
