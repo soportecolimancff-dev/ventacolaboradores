@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
 import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 
 export async function GET(
   _req: NextRequest,
@@ -35,9 +36,7 @@ export async function GET(
     orderBy: { producto: { nombre: "asc" } },
   });
 
-  const limite = await prisma.limiteCompra.findUnique({
-    where: { semana },
-  });
+  const limite = await obtenerLimiteSemana(semana);
 
   return Response.json({
     sucursal,

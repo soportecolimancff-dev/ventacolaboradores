@@ -19,6 +19,7 @@ import {
   getMondayUTC,
   type ErrorValidacion,
 } from "@/lib/validaciones";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -115,9 +116,7 @@ export async function POST(req: NextRequest) {
   }, 0);
 
   // Validar límite de compra (global — igual para todas las sucursales)
-  const limite = await prisma.limiteCompra.findUnique({
-    where: { semana },
-  });
+  const limite = await obtenerLimiteSemana(semana);
 
   // Si las compras están cerradas para la semana, bloquear creación de pedidos
   if (limite && limite.comprasAbiertas === false) {

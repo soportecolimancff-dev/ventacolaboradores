@@ -7,6 +7,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 import LimitesForm from "@/components/admin/LimitesForm";
 
 export const metadata = { title: "Límites | Admin Coliman" };
@@ -15,7 +16,7 @@ export default async function AdminLimitesPage() {
   const semana = getMondayUTC();
 
   const [limiteGlobal, productos] = await Promise.all([
-    prisma.limiteCompra.findUnique({ where: { semana } }),
+    obtenerLimiteSemana(semana),
     prisma.producto.findMany({
       where: { activo: true },
       select: { id: true, nombre: true, maxCantidad: true },

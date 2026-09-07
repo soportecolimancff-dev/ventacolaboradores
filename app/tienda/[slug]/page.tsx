@@ -7,6 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
 import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 import ProductoCard from "@/components/tienda/ProductoCard";
 import CarritoDrawer from "@/components/tienda/CarritoDrawer";
 import LimiteIndicator from "@/components/tienda/LimiteIndicator";
@@ -46,9 +47,7 @@ export default async function CatalogoPage({ params }: Props) {
     orderBy: { producto: { nombre: "asc" } },
   });
 
-  const limite = await prisma.limiteCompra.findUnique({
-    where: { semana },
-  });
+  const limite = await obtenerLimiteSemana(semana);
 
   // Si las compras están cerradas para la semana, redirigir al selector de sucursal
   if (limite && limite.comprasAbiertas === false) {

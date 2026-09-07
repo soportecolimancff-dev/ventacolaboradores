@@ -8,13 +8,14 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const semanaParam = searchParams.get("semana");
   const semana = semanaParam ? new Date(semanaParam) : getMondayUTC();
 
-  const limite = await prisma.limiteCompra.findUnique({ where: { semana } });
+  const limite = await obtenerLimiteSemana(semana);
   return Response.json(limite ?? null);
 }
 

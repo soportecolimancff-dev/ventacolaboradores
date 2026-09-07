@@ -5,6 +5,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 import SucursalSelector from "@/components/tienda/SucursalSelector";
 
 export const metadata = {
@@ -18,7 +19,7 @@ export default async function TiendaPage() {
     select: { id: true, nombre: true, slug: true },
   });
   const semana = getMondayUTC();
-  const limite = await prisma.limiteCompra.findUnique({ where: { semana } });
+  const limite = await obtenerLimiteSemana(semana);
   const comprasAbiertas = limite?.comprasAbiertas ?? true;
 
   return (
