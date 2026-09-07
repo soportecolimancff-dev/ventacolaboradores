@@ -6,6 +6,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 import ProductoCard from "@/components/tienda/ProductoCard";
 import CarritoDrawer from "@/components/tienda/CarritoDrawer";
 import LimiteIndicator from "@/components/tienda/LimiteIndicator";
@@ -34,6 +35,8 @@ export default async function CatalogoPage({ params }: Props) {
   });
 
   if (!sucursal) notFound();
+
+  await asegurarCatalogoSemana(semana);
 
   const productosSucursal = await prisma.productoSucursal.findMany({
     where: { sucursalId: sucursal.id, semana, disponible: true },

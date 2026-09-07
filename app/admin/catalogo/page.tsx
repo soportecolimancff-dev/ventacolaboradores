@@ -4,12 +4,14 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 import CatalogoManager from "@/components/admin/CatalogoManager";
 
 export const metadata = { title: "Catálogo | Admin Coliman" };
 
 export default async function AdminCatalogoPage() {
   const semana = getMondayUTC();
+  await asegurarCatalogoSemana(semana);
 
   const [items, productos, sucursales] = await Promise.all([
     prisma.productoSucursal.findMany({

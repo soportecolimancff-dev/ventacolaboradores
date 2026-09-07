@@ -5,6 +5,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 
 export async function GET(
   _req: NextRequest,
@@ -12,6 +13,8 @@ export async function GET(
 ) {
   const { slug } = await params;
   const semana = getMondayUTC();
+
+  await asegurarCatalogoSemana(semana);
 
   const sucursal = await prisma.sucursal.findUnique({
     where: { slug, activa: true },

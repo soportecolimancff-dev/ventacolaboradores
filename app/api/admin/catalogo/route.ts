@@ -7,12 +7,15 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
+import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 
 // GET – lista productos de la semana para todas las sucursales
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const semanaParam = searchParams.get("semana");
   const semana = semanaParam ? new Date(semanaParam) : getMondayUTC();
+
+  await asegurarCatalogoSemana(semana);
 
   const items = await prisma.productoSucursal.findMany({
     where: { semana },
