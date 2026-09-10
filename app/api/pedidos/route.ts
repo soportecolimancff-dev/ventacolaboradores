@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
           noEmpleado,
           nombreEmpleado,
           emailEmpleado: emailEmpleado || null,
-          telefonoEmpleado,
+          telefonoEmpleado: telefonoEmpleado || null,
           sucursalId,
           semana,
           total,

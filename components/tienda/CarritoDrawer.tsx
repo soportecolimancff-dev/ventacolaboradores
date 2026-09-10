@@ -31,7 +31,6 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
   // Datos del colaborador
   const [noEmpleado, setNoEmpleado] = useState("");
   const [nombreEmpleado, setNombreEmpleado] = useState("");
-  const [emailEmpleado, setEmailEmpleado] = useState("");
   const [telefonoEmpleado, setTelefonoEmpleado] = useState("");
   const [erroresCampos, setErroresCampos] = useState<Record<string, string>>({});
 
@@ -42,11 +41,8 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
     const errs: Record<string, string> = {};
     if (!noEmpleado.trim()) errs.noEmpleado = "El numero de empleado es requerido";
     if (nombreEmpleado.trim().length < 2) errs.nombreEmpleado = "Ingresa tu nombre completo";
-    if (!telefonoEmpleado.trim() || telefonoEmpleado.trim().length < 10) {
+    if (telefonoEmpleado.trim() && telefonoEmpleado.trim().length < 10) {
       errs.telefonoEmpleado = "Ingresa un telefono valido (10 digitos)";
-    }
-    if (emailEmpleado.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEmpleado.trim())) {
-      errs.emailEmpleado = "Correo invalido";
     }
     setErroresCampos(errs);
     return Object.keys(errs).length === 0;
@@ -70,8 +66,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
         body: JSON.stringify({
           noEmpleado: noEmpleado.trim(),
           nombreEmpleado: nombreEmpleado.trim(),
-          emailEmpleado: emailEmpleado.trim() || undefined,
-          telefonoEmpleado: telefonoEmpleado.trim(),
+          telefonoEmpleado: telefonoEmpleado.trim() || undefined,
           sucursalId,
           items: items.map((i) => ({
             productoSucursalId: i.productoSucursalId,
@@ -87,8 +82,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
           pedidoId: data.id,
           noEmpleado: noEmpleado.trim(),
           nombreEmpleado: nombreEmpleado.trim(),
-          emailEmpleado: emailEmpleado.trim() || undefined,
-          telefonoEmpleado: telefonoEmpleado.trim(),
+          telefonoEmpleado: telefonoEmpleado.trim() || "",
           sucursal: sucursalNombre,
           items: items.map((i) => ({ nombre: i.nombre, precio: i.precio, cantidad: i.cantidad })),
           total,
@@ -138,7 +132,6 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
       setPaso("carrito");
       setNoEmpleado("");
       setNombreEmpleado("");
-      setEmailEmpleado("");
       setTelefonoEmpleado("");
       setPedidoSnapshot(null);
     }
@@ -332,7 +325,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
               {/* Telefono */}
               <div>
                 <label className="mb-1 block text-sm font-semibold text-gray-700">
-                  Telefono <span className="text-red-500">*</span>
+                  Telefono <span className="text-gray-400">(opcional)</span>
                 </label>
                 <input
                   type="tel"
@@ -345,26 +338,6 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
                 />
                 {erroresCampos.telefonoEmpleado && (
                   <p className="mt-1 text-xs text-red-500">{erroresCampos.telefonoEmpleado}</p>
-                )}
-              </div>
-
-              {/* Correo (opcional) */}
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-gray-700">
-                  Correo electronico{" "}
-                  <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={emailEmpleado}
-                  onChange={(e) => setEmailEmpleado(e.target.value)}
-                  placeholder="salvador.ramirez@coliman.com"
-                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-400 ${
-                    erroresCampos.emailEmpleado ? "border-red-400 bg-red-50" : "border-gray-200"
-                  }`}
-                />
-                {erroresCampos.emailEmpleado && (
-                  <p className="mt-1 text-xs text-red-500">{erroresCampos.emailEmpleado}</p>
                 )}
               </div>
 

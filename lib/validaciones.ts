@@ -16,7 +16,15 @@ export const CrearPedidoSchema = z.object({
   noEmpleado: z.string().trim().min(1, "El número de empleado es requerido"),
   nombreEmpleado: z.string().trim().min(2, "El nombre es requerido"),
   emailEmpleado: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
-  telefonoEmpleado: z.string().trim().min(10, "El teléfono es requerido"),
+  telefonoEmpleado: z.preprocess(
+    (value) => (value === undefined ? "" : value),
+    z
+      .string()
+      .trim()
+      .refine((value) => value === "" || value.length >= 10, {
+        message: "El teléfono debe tener al menos 10 dígitos",
+      })
+  ),
   sucursalId: z.number().int().positive(),
   items: z.array(ItemCarritoSchema).min(1, "El carrito no puede estar vacío"),
 });
