@@ -29,7 +29,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const item = await prisma.itemPedido.findUnique({
     where: { id: itemIdNum },
-    select: { id: true, pedidoId: true, precioUnit: true, pedido: { select: { estado: true } } },
+    select: {
+      id: true,
+      pedidoId: true,
+      productoId: true,
+      cantidad: true,
+      precioUnit: true,
+      pedido: { select: { estado: true, sucursalId: true, semana: true } },
+    },
   });
 
   if (!item || item.pedidoId !== pedidoId) {
@@ -42,9 +49,35 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const nuevaCantidad = parsed.data.cantidad;
   const nuevoSubtotal = Number(item.precioUnit) * nuevaCantidad;
+  const diff = nuevaCantidad - item.cantidad;
 
-  // Actualizar ítem y recalcular total del pedido en una transacción
+  // Actualizar ítem, stock y recalcular total del pedido en una transacción
   const [itemActualizado, pedidoActualizado] = await prisma.$transaction(async (tx) => {
+    if (diff !== 0) {
+      const ps = await tx.productoSucursal.findFirst({
+        where: {
+          productoId: item.productoId,
+          sucursalId: item.pedido.sucursalId,
+          semana: item.pedido.semana,
+        },
+      });
+
+      if (ps && ps.stock !== null) {
+        await tx.productoSucursal.update({
+          where: { id: ps.id },
+          data: {
+            stock: { decrement: diff },
+            disponible: true,
+          },
+        });
+      } else if (ps) {
+        await tx.productoSucursal.update({
+          where: { id: ps.id },
+          data: { disponible: true },
+        });
+      }
+    }
+
     const updatedItem = await tx.itemPedido.update({
       where: { id: itemIdNum },
       data: { cantidad: nuevaCantidad, subtotal: nuevoSubtotal },
@@ -79,7 +112,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const item = await prisma.itemPedido.findUnique({
     where: { id: itemIdNum },
-    select: { pedidoId: true, pedido: { select: { estado: true } } },
+    select: {
+      id: true,
+      pedidoId: true,
+      productoId: true,
+      cantidad: true,
+      pedido: { select: { estado: true, sucursalId: true, semana: true } },
+    },
   });
 
   if (!item || item.pedidoId !== pedidoId) {
@@ -91,6 +130,32 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   const pedidoActualizado = await prisma.$transaction(async (tx) => {
+    // Restaurar stock del producto si es controlado
+    const ps = await tx.productoSucursal.findFirst({
+      where: {
+        productoId: item.productoId,
+        sucursalId: item.pedido.sucursalId,
+        semana: item.pedido.semana,
+      },
+    });
+
+    if (ps) {
+      if (ps.stock !== null) {
+        await tx.productoSucursal.update({
+          where: { id: ps.id },
+          data: {
+            stock: { increment: item.cantidad },
+            disponible: true,
+          },
+        });
+      } else {
+        await tx.productoSucursal.update({
+          where: { id: ps.id },
+          data: { disponible: true },
+        });
+      }
+    }
+
     await tx.itemPedido.delete({ where: { id: itemIdNum } });
 
     const itemsRestantes = await tx.itemPedido.findMany({

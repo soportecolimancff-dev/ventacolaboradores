@@ -8,10 +8,12 @@ import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
 import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 import { obtenerLimiteSemana } from "@/lib/limiteSemana";
-import ProductoCard from "@/components/tienda/ProductoCard";
-import CarritoDrawer from "@/components/tienda/CarritoDrawer";
+import CatalogoCliente from "@/components/tienda/CatalogoCliente";
 import LimiteIndicator from "@/components/tienda/LimiteIndicator";
 import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -40,7 +42,12 @@ export default async function CatalogoPage({ params }: Props) {
   await asegurarCatalogoSemana(semana);
 
   const productosSucursal = await prisma.productoSucursal.findMany({
-    where: { sucursalId: sucursal.id, semana, disponible: true },
+    where: {
+      sucursalId: sucursal.id,
+      semana,
+      disponible: true,
+      producto: { activo: true },
+    },
     include: {
       producto: { select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true } },
     },
@@ -90,33 +97,15 @@ export default async function CatalogoPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Catálogo */}
-      <section className="mx-auto max-w-2xl px-4 pt-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
-          Productos disponibles esta semana
-        </h2>
-
-        {productos.length === 0 ? (
-          <div className="mt-20 text-center text-gray-400">
-            <p className="text-4xl mb-3">📭</p>
-            <p>No hay productos disponibles esta semana.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {productos.map((p: (typeof productos)[number]) => (
-              <ProductoCard
-                key={p.productoSucursalId}
-                producto={p}
-                limiteCompra={limiteCompra}
-                cantidadMaxima={cantidadMaxima}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Carrito flotante */}
-      <CarritoDrawer sucursalId={sucursal.id} sucursalNombre={sucursal.nombre} />
+      {/* Catálogo interactivo con carrito */}
+      <CatalogoCliente
+        sucursalId={sucursal.id}
+        sucursalNombre={sucursal.nombre}
+        slug={slug}
+        productosIniciales={productos}
+        limiteCompra={limiteCompra}
+        cantidadMaxima={cantidadMaxima}
+      />
     </main>
   );
 }

@@ -28,7 +28,7 @@ export interface ItemCatalogo {
   productoId: number;
   sucursalId: number;
   precio: number;
-  stock: number;
+  stock: number | null;
   disponible: boolean;
   producto: { id: number; nombre: string; imagenUrl: string | null };
   sucursal: { id: number; nombre: string; slug: string };
@@ -99,7 +99,7 @@ export default function CatalogoManager({
   const [tab, setTab] = useState<number>(sucursales[0]?.id ?? 0);
 
   // Catalogo: edicion de precio/stock de items ya existentes
-  const [editando, setEditando] = useState<Record<number, { precio: string; stock: string }>>({}); 
+  const [editando, setEditando] = useState<Record<number, { precio: string; esIlimitado: boolean; stock: string }>>({}); 
 
   // Maestro: edicion inline
   const [editandoMaestro, setEditandoMaestro] = useState<number | null>(null);
@@ -107,8 +107,8 @@ export default function CatalogoManager({
   // Maestro: confirmacion de borrado
   const [confirmandoBorrar, setConfirmandoBorrar] = useState<number | null>(null);
   // Catalogo: productos en proceso de activacion (no tienen item aun)
-  // key = productoId, value = { precio, stock } | null (null = no activando)
-  const [activando, setActivando] = useState<Record<number, { precio: string; stock: string } | null>>({});
+  // key = productoId, value = { precio, esIlimitado, stock } | null (null = no activando)
+  const [activando, setActivando] = useState<Record<number, { precio: string; esIlimitado: boolean; stock: string } | null>>({});
 
   // ── Maestro: crear producto ───────────────────────────────────────────────
   const crearProducto = async () => {
@@ -232,16 +232,22 @@ export default function CatalogoManager({
           disponible: !item.disponible,
         }),
       });
-      if (!res.ok) throw new Error();
-      const updated: { id: number } = await res.json();
-      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, disponible: !i.disponible, id: updated.id } : i));
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error?.message ?? "Error");
+      }
+      const updated: { id: number; stock: number | null } = await res.json();
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, disponible: !i.disponible, id: updated.id, stock: updated.stock ?? null } : i));
     } catch { setError("No se pudo actualizar la disponibilidad."); }
     finally { setSaving(null); }
   };
 
   // ── Catalogo: iniciar activacion de producto sin item ────────────────────
   const iniciarActivacion = (productoId: number) => {
-    setActivando((prev) => ({ ...prev, [productoId]: { precio: "", stock: "0" } }));
+    setActivando((prev) => ({
+      ...prev,
+      [productoId]: { precio: "", esIlimitado: true, stock: "10" },
+    }));
     setError(null);
   };
 
@@ -253,50 +259,107 @@ export default function CatalogoManager({
     const vals = activando[productoId];
     if (!vals) return;
     const precio = parseFloat(vals.precio);
-    const stock = parseInt(vals.stock, 10);
-    if (isNaN(precio) || precio <= 0) { setError("Precio debe ser mayor a 0."); return; }
-    if (isNaN(stock) || stock < 0) { setError("Stock debe ser >= 0."); return; }
+    if (isNaN(precio) || precio <= 0) { setError("El precio debe ser un número mayor a 0."); return; }
+
+    let stockFinal: number | null = null;
+    if (!vals.esIlimitado) {
+      const parsedInt = parseInt(vals.stock, 10);
+      if (isNaN(parsedInt) || parsedInt < 1) {
+        setError("Para stock con límite, ingresa una cantidad de unidades mayor o igual a 1.");
+        return;
+      }
+      stockFinal = parsedInt;
+    }
+
     const key = `activar-${productoId}`;
     setSaving(key); setError(null);
     try {
       const res = await fetch("/api/admin/catalogo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productoId, sucursalId, semana, precio, stock, disponible: true }),
+        body: JSON.stringify({
+          productoId,
+          sucursalId,
+          semana,
+          precio,
+          stock: stockFinal,
+          disponible: true,
+        }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error?.message ?? "Error al activar el producto");
+      }
       const newItem: ItemCatalogo & { precio: unknown; stock: unknown } = await res.json();
-      setItems((prev) => [...prev, { ...newItem, precio: Number(newItem.precio), stock: Number(newItem.stock) } as ItemCatalogo]);
+      setItems((prev) => [...prev, {
+        ...newItem,
+        precio: Number(newItem.precio),
+        stock: newItem.stock !== null && newItem.stock !== undefined ? Number(newItem.stock) : null,
+      } as ItemCatalogo]);
       cancelarActivacion(productoId);
-    } catch { setError("No se pudo activar el producto."); }
-    finally { setSaving(null); }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo activar el producto.");
+    } finally {
+      setSaving(null);
+    }
   };
 
   // ── Catalogo: edicion precio/stock inline ────────────────────────────────
   const iniciarEdicion = (item: ItemCatalogo) =>
-    setEditando((prev) => ({ ...prev, [item.id]: { precio: String(item.precio), stock: String(item.stock) } }));
+    setEditando((prev) => ({
+      ...prev,
+      [item.id]: {
+        precio: String(item.precio),
+        esIlimitado: item.stock === null,
+        stock: item.stock === null ? "10" : String(item.stock),
+      },
+    }));
 
   const cancelarEdicion = (itemId: number) =>
     setEditando((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
 
   const guardarEdicion = async (item: ItemCatalogo) => {
     const vals = editando[item.id];
+    if (!vals) return;
     const precio = parseFloat(vals.precio);
-    const stock = parseInt(vals.stock, 10);
-    if (isNaN(precio) || precio <= 0 || isNaN(stock) || stock < 0) { setError("Precio > 0 y stock >= 0."); return; }
+    if (isNaN(precio) || precio <= 0) { setError("El precio debe ser un número mayor a 0."); return; }
+
+    let stockFinal: number | null = null;
+    if (!vals.esIlimitado) {
+      const parsedInt = parseInt(vals.stock, 10);
+      if (isNaN(parsedInt) || parsedInt < 0) {
+        setError("Para stock con límite, ingresa una cantidad mayor o igual a 0.");
+        return;
+      }
+      stockFinal = parsedInt;
+    }
+
     const key = `edit-${item.id}`;
     setSaving(key); setError(null);
     try {
       const res = await fetch("/api/admin/catalogo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productoId: item.productoId, sucursalId: item.sucursalId, semana, precio, stock, disponible: item.disponible }),
+        body: JSON.stringify({
+          productoId: item.productoId,
+          sucursalId: item.sucursalId,
+          semana,
+          precio,
+          stock: stockFinal,
+          disponible: item.disponible,
+        }),
       });
-      if (!res.ok) throw new Error();
-      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, precio, stock } : i));
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error?.message ?? "Error al guardar los cambios");
+      }
+      setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, precio, stock: stockFinal } : i));
       cancelarEdicion(item.id);
-    } catch { setError("No se pudo guardar."); }
-    finally { setSaving(null); }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+    } finally {
+      setSaving(null);
+    }
   };
 
   // ── Datos derivados ───────────────────────────────────────────────────────
@@ -378,10 +441,10 @@ export default function CatalogoManager({
               <thead className="text-xs font-semibold uppercase tracking-wide text-gray-500" style={{ background: "#f9fafb" }}>
                 <tr>
                   <th className="px-4 py-3 text-left">Producto</th>
-                  <th className="px-4 py-3 text-center w-40">Disponibilidad</th>
-                  <th className="px-4 py-3 text-right w-32">Precio</th>
-                  <th className="px-4 py-3 text-right w-28">Stock</th>
-                  <th className="px-4 py-3 text-right w-32">Acciones</th>
+                  <th className="px-4 py-3 text-center w-36">Disponibilidad</th>
+                  <th className="px-4 py-3 text-right w-28">Precio</th>
+                  <th className="px-4 py-3 text-right w-48">Stock</th>
+                  <th className="px-4 py-3 text-right w-28">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -480,23 +543,95 @@ export default function CatalogoManager({
                       {/* Stock */}
                       <td className="px-4 py-3 text-right">
                         {enActivacion ? (
-                          <input
-                            type="number" min="0" step="1" placeholder="0"
-                            value={activando[producto.id]?.stock ?? ""}
-                            onChange={(e) => setActivando((prev) => ({ ...prev, [producto.id]: { ...prev[producto.id]!, stock: e.target.value } }))}
-                            className="w-20 rounded-lg border border-green-400 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                          />
+                          <div className="flex flex-col items-end gap-1.5">
+                            <div className="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs font-medium">
+                              <button
+                                type="button"
+                                onClick={() => setActivando((prev) => ({ ...prev, [producto.id]: { ...prev[producto.id]!, esIlimitado: true } }))}
+                                className={`rounded-md px-2 py-0.5 transition ${
+                                  activando[producto.id]?.esIlimitado
+                                    ? "bg-emerald-600 text-white font-bold shadow-xs"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
+                              >
+                                Ilimitado
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActivando((prev) => ({ ...prev, [producto.id]: { ...prev[producto.id]!, esIlimitado: false } }))}
+                                className={`rounded-md px-2 py-0.5 transition ${
+                                  !activando[producto.id]?.esIlimitado
+                                    ? "bg-emerald-600 text-white font-bold shadow-xs"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
+                              >
+                                Con límite
+                              </button>
+                            </div>
+                            {!activando[producto.id]?.esIlimitado && (
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                placeholder="Cant. piezas"
+                                value={activando[producto.id]?.stock ?? ""}
+                                onChange={(e) => setActivando((prev) => ({ ...prev, [producto.id]: { ...prev[producto.id]!, stock: e.target.value } }))}
+                                className="w-24 rounded-lg border border-green-400 px-2 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                              />
+                            )}
+                          </div>
                         ) : isEditing && item ? (
-                          <input
-                            type="number" min="0" step="1"
-                            value={editando[item.id].stock}
-                            onChange={(e) => setEditando((prev) => ({ ...prev, [item.id]: { ...prev[item.id], stock: e.target.value } }))}
-                            className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                          />
+                          <div className="flex flex-col items-end gap-1.5">
+                            <div className="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs font-medium">
+                              <button
+                                type="button"
+                                onClick={() => setEditando((prev) => ({ ...prev, [item.id]: { ...prev[item.id], esIlimitado: true } }))}
+                                className={`rounded-md px-2 py-0.5 transition ${
+                                  editando[item.id]?.esIlimitado
+                                    ? "bg-emerald-600 text-white font-bold shadow-xs"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
+                              >
+                                Ilimitado
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditando((prev) => ({ ...prev, [item.id]: { ...prev[item.id], esIlimitado: false } }))}
+                                className={`rounded-md px-2 py-0.5 transition ${
+                                  !editando[item.id]?.esIlimitado
+                                    ? "bg-emerald-600 text-white font-bold shadow-xs"
+                                    : "text-gray-600 hover:text-gray-900"
+                                }`}
+                              >
+                                Con límite
+                              </button>
+                            </div>
+                            {!editando[item.id]?.esIlimitado && (
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="Cant. piezas"
+                                value={editando[item.id]?.stock ?? ""}
+                                onChange={(e) => setEditando((prev) => ({ ...prev, [item.id]: { ...prev[item.id], stock: e.target.value } }))}
+                                className="w-24 rounded-lg border border-gray-300 px-2 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                              />
+                            )}
+                          </div>
                         ) : item ? (
-                          <span className={item.disponible ? "text-gray-600" : "text-gray-400"}>
-                            {item.stock === 0 ? "Ilimitado" : item.stock}
-                          </span>
+                          item.stock === null ? (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              ♾️ Ilimitado
+                            </span>
+                          ) : item.stock === 0 ? (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                              0 (Agotado)
+                            </span>
+                          ) : (
+                            <span className={`font-semibold ${item.disponible ? "text-gray-800" : "text-gray-400"}`}>
+                              📦 {item.stock} {producto.unidad === "Kg" ? "kg" : "pz"}
+                            </span>
+                          )
                         ) : (
                           <span className="text-gray-300">--</span>
                         )}
@@ -558,7 +693,7 @@ export default function CatalogoManager({
           </div>
 
           <p className="text-xs text-gray-400">
-            Switch OFF = producto no disponible para colaboradores esta semana. Stock 0 = sin limite.
+            Switch OFF = producto no disponible para colaboradores esta semana. Stock Ilimitado = sin tope de inventario. Con límite = unidades disponibles que disminuyen automáticamente con cada pedido.
           </p>
         </div>
       )}

@@ -32,8 +32,13 @@ export async function GET(req: NextRequest) {
 
   const semana = getMondayUTC();
   const noEmpleadoQ = searchParams.get("noEmpleado") ?? "";
-  const pedido = await prisma.pedido.findUnique({
-    where: { noEmpleado_sucursalId_semana: { noEmpleado: noEmpleadoQ, sucursalId, semana } },
+  const pedido = await prisma.pedido.findFirst({
+    where: {
+      noEmpleado: noEmpleadoQ,
+      sucursalId,
+      semana,
+      estado: { not: "CANCELADO" },
+    },
     include: { items: { include: { producto: true } } },
   });
 
@@ -57,11 +62,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: { code: "SUCURSAL_NO_ENCONTRADA", message: "Sucursal no encontrada" } }, { status: 400 });
   }
 
-  // Verificar que no existe pedido previo esta semana para este colaborador
+  // Verificar que no existe pedido previo activo esta semana para este colaborador
   const pedidoExistente = await prisma.pedido.findUnique({
     where: { noEmpleado_sucursalId_semana: { noEmpleado, sucursalId, semana } },
   });
-  if (pedidoExistente) {
+  if (pedidoExistente && pedidoExistente.estado !== "CANCELADO") {
     const error: ErrorValidacion = { tipo: "PEDIDO_DUPLICADO" };
     return Response.json({ error }, { status: 409 });
   }
@@ -99,11 +104,11 @@ export async function POST(req: NextRequest) {
       return Response.json({ error }, { status: 400 });
     }
 
-    if (ps.stock > 0 && item.cantidad > ps.stock) {
+    if (ps.stock !== null && item.cantidad > ps.stock) {
       const error: ErrorValidacion = {
         tipo: "STOCK_INSUFICIENTE",
         productoNombre: ps.producto.nombre,
-        disponible: ps.stock,
+        disponible: Math.max(0, ps.stock),
       };
       return Response.json({ error }, { status: 400 });
     }
@@ -153,6 +158,40 @@ export async function POST(req: NextRequest) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pedido = await prisma.$transaction(async (tx: any) => {
+      // Si existía un pedido cancelado previamente para este colaborador en esta semana y sucursal,
+      // eliminarlo para no chocar con la restricción de unicidad
+      if (pedidoExistente && pedidoExistente.estado === "CANCELADO") {
+        await tx.pedido.delete({ where: { id: pedidoExistente.id } });
+      }
+
+      // Validar y decrementar stock en tiempo real solo para productos con stock limitado (stock !== null)
+      for (const item of items) {
+        const ps = catálogo.find((c: (typeof catálogo)[number]) => c.id === item.productoSucursalId)!;
+        if (ps.stock !== null) {
+          const psActual = await tx.productoSucursal.findUnique({
+            where: { id: item.productoSucursalId },
+            include: { producto: { select: { nombre: true } } },
+          });
+
+          if (!psActual || psActual.stock === null || psActual.stock < item.cantidad) {
+            const errPayload: ErrorValidacion = {
+              tipo: "STOCK_INSUFICIENTE",
+              productoNombre: psActual?.producto?.nombre ?? ps.producto.nombre,
+              disponible: Math.max(0, psActual?.stock ?? 0),
+            };
+            throw new Error(`VALIDATION_ERROR:${JSON.stringify(errPayload)}`);
+          }
+
+          const nuevoStock = psActual.stock - item.cantidad;
+          await tx.productoSucursal.update({
+            where: { id: item.productoSucursalId },
+            data: {
+              stock: nuevoStock,
+            },
+          });
+        }
+      }
+
       const nuevoPedido = await tx.pedido.create({
         data: {
           noEmpleado,
@@ -177,22 +216,16 @@ export async function POST(req: NextRequest) {
         include: { items: true },
       });
 
-      // Decrementar stock solo si es stock controlado (> 0)
-      for (const item of items) {
-        const ps = catálogo.find((c: (typeof catálogo)[number]) => c.id === item.productoSucursalId)!;
-        if (ps.stock > 0) {
-          await tx.productoSucursal.update({
-            where: { id: ps.id },
-            data: { stock: { decrement: item.cantidad } },
-          });
-        }
-      }
-
       return nuevoPedido;
     });
 
     return Response.json(pedido, { status: 201 });
-  } catch (err) {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.startsWith("VALIDATION_ERROR:")) {
+      const errorPayload = JSON.parse(err.message.replace("VALIDATION_ERROR:", ""));
+      return Response.json({ error: errorPayload }, { status: 400 });
+    }
+
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
       return Response.json({ error: { code: "PRISMA_KNOWN_ERROR", message: err.message } }, { status: 400 });
     }

@@ -30,7 +30,7 @@ export default function ControlCantidad({
         −
       </button>
 
-      <span className="min-w-[2rem] text-center text-sm font-bold text-gray-800">
+      <span className="min-w-8 text-center text-sm font-bold text-gray-800">
         {cantidad}
       </span>
 

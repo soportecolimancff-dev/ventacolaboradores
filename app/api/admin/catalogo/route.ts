@@ -34,7 +34,7 @@ const CrearItemSchema = z.object({
   sucursalId: z.number().int().positive(),
   semana: z.string().datetime().optional(),
   precio: z.number().positive(),
-  stock: z.number().int().min(0).default(0),
+  stock: z.number().int().min(0).nullable().optional(),
   disponible: z.boolean().default(true),
 });
 
@@ -50,6 +50,10 @@ export async function POST(req: NextRequest) {
   const { semana: semanaStr, ...data } = parsed.data;
   const semana = semanaStr ? new Date(semanaStr) : getMondayUTC();
 
+  // Stock: 0, null o undefined se interpreta como stock ilimitado (null en BD)
+  // Valores > 0 se guardan como stock controlado
+  const stockNormalizado = data.stock === 0 || data.stock === null || data.stock === undefined ? null : data.stock;
+
   const item = await prisma.productoSucursal.upsert({
     where: {
       productoId_sucursalId_semana: {
@@ -60,10 +64,14 @@ export async function POST(req: NextRequest) {
     },
     update: {
       precio: data.precio,
-      stock: data.stock,
+      stock: stockNormalizado,
       disponible: data.disponible,
     },
-    create: { ...data, semana },
+    create: {
+      ...data,
+      stock: stockNormalizado,
+      semana,
+    },
     include: { producto: true, sucursal: true },
   });
 

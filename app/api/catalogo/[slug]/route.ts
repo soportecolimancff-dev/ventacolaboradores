@@ -8,6 +8,9 @@ import { getMondayUTC } from "@/lib/validaciones";
 import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -27,7 +30,12 @@ export async function GET(
   }
 
   const productosSucursal = await prisma.productoSucursal.findMany({
-    where: { sucursalId: sucursal.id, semana, disponible: true },
+    where: {
+      sucursalId: sucursal.id,
+      semana,
+      disponible: true,
+      producto: { activo: true },
+    },
     include: {
       producto: {
         select: { id: true, nombre: true, unidad: true, imagenUrl: true, maxCantidad: true },

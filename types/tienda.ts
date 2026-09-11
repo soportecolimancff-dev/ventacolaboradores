@@ -15,7 +15,7 @@ export interface ProductoCatalogo {
   imagenUrl: string | null;
   precio: number;
   maxCantidad: number;
-  stock: number;
+  stock: number | null;
 }
 
 export interface ItemCarrito {
@@ -24,6 +24,7 @@ export interface ItemCarrito {
   nombre: string;
   precio: number;
   maxCantidad: number;
+  stock?: number | null;
   cantidad: number;
 }
 

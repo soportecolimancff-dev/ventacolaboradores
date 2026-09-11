@@ -35,7 +35,10 @@ export async function PATCH(
     return Response.json({ error: parsed.error.flatten() }, { status: 422 });
   }
 
-  const pedido = await prisma.pedido.findUnique({ where: { id: pedidoId } });
+  const pedido = await prisma.pedido.findUnique({
+    where: { id: pedidoId },
+    include: { items: true },
+  });
   if (!pedido) {
     return Response.json({ error: "Pedido no encontrado" }, { status: 404 });
   }
@@ -48,9 +51,44 @@ export async function PATCH(
     );
   }
 
-  const actualizado = await prisma.pedido.update({
-    where: { id: pedidoId },
-    data: { estado: parsed.data.estado },
+  const actualizado = await prisma.$transaction(async (tx) => {
+    // Si se cancela un pedido que estaba PENDIENTE o CONFIRMADO, devolver el stock
+    if (parsed.data.estado === "CANCELADO" && pedido.estado !== "CANCELADO") {
+      for (const item of pedido.items) {
+        const ps = await tx.productoSucursal.findFirst({
+          where: {
+            productoId: item.productoId,
+            sucursalId: pedido.sucursalId,
+            semana: pedido.semana,
+          },
+        });
+
+        if (ps) {
+          if (ps.stock !== null) {
+            await tx.productoSucursal.update({
+              where: { id: ps.id },
+              data: {
+                stock: { increment: item.cantidad },
+                disponible: true,
+              },
+            });
+          } else {
+            // Producto con stock ilimitado (stock null): asegurar disponible
+            await tx.productoSucursal.update({
+              where: { id: ps.id },
+              data: {
+                disponible: true,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return tx.pedido.update({
+      where: { id: pedidoId },
+      data: { estado: parsed.data.estado },
+    });
   });
 
   return Response.json(actualizado);

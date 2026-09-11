@@ -11,12 +11,13 @@ import type { DatosPedidoPdf } from "@/lib/pdf/pedidoPdf";
 interface Props {
   sucursalId: number;
   sucursalNombre: string;
+  onPedidoExitoso?: () => void;
 }
 
 // Pasos del flujo de confirmacion
 type Paso = "carrito" | "datos" | "exito";
 
-export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
+export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExitoso }: Props) {
   const { items, total, itemCount, limiteCompra, limiteCantidad, vaciar } =
     useCarrito();
   const [abierto, setAbierto] = useState(false);
@@ -91,6 +92,8 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
         setPedidoSnapshot(snapshot);
         vaciar();
         setPaso("exito");
+        // Notificar al catálogo para refrescar el stock en las tarjetas
+        onPedidoExitoso?.();
         // Generar PDF automáticamente
         const { generarPdfPedido } = await import("@/lib/pdf/pedidoPdf");
         generarPdfPedido(snapshot).catch(() => null);
@@ -99,13 +102,19 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre }: Props) {
         const e = data?.error;
         setErrorMsg(
           e?.tipo === "MONTO_EXCEDIDO"
-            ? `El total supera el limite de $${e.montoMaximo}.`
+            ? `El total supera el límite de $${e.montoMaximo}.`
             : e?.tipo === "CANTIDAD_EXCEDIDA"
-            ? `Maximo ${e.max} de ${e.productoNombre}.`
+            ? `Máximo ${e.max} de ${e.productoNombre}.`
             : e?.tipo === "CANTIDAD_TOTAL_EXCEDIDA"
-            ? `El pedido excede la cantidad maxima de ${e.cantidadMaxima}.`
+            ? `El pedido excede la cantidad máxima de ${e.cantidadMaxima}.`
+            : e?.tipo === "STOCK_INSUFICIENTE"
+            ? (e.disponible === 0
+                ? `El producto "${e.productoNombre}" ya no tiene stock disponible.`
+                : `Solo quedan ${e.disponible} unidades disponibles de "${e.productoNombre}".`)
             : e?.tipo === "PEDIDO_DUPLICADO"
             ? "Ya tienes un pedido esta semana en esta sucursal."
+            : e?.tipo === "COMPRAS_CERRADAS"
+            ? "Las compras están cerradas esta semana."
             : "No se pudo procesar el pedido. Intenta de nuevo."
         );
         setPaso("datos");

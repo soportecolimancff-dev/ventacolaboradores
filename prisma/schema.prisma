@@ -61,7 +61,7 @@ model ProductoSucursal {
   sucursalId   Int
   semana       DateTime                // Lunes de la semana en curso (00:00 UTC)
   precio       Decimal  @db.Decimal(10, 2)
-  stock        Int      @default(0)    // Unidades disponibles (0 = sin límite de stock)
+  stock        Int?                    // Unidades disponibles (null = sin límite, 0 = agotado, > 0 = disponible)
   disponible   Boolean  @default(true)
 
   producto Producto @relation(fields: [productoId], references: [id])

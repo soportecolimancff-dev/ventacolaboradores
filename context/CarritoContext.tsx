@@ -46,20 +46,24 @@ function carritoReducer(state: CarritoState, action: CarritoAction): CarritoStat
       const existe = state.items.find(
         (i) => i.productoSucursalId === action.item.productoSucursalId
       );
+      const stockLimite = action.item.stock !== null && action.item.stock !== undefined ? Math.max(0, action.item.stock) : Infinity;
+      const maxPermitido = Math.min(action.item.maxCantidad, stockLimite);
+      if (maxPermitido <= 0) return state;
+
       if (existe) {
-        const nuevaCantidad = Math.min(existe.cantidad + 1, existe.maxCantidad);
+        const nuevaCantidad = Math.min(existe.cantidad + 1, maxPermitido);
         return {
           ...state,
           items: state.items.map((i) =>
             i.productoSucursalId === action.item.productoSucursalId
-              ? { ...i, cantidad: nuevaCantidad }
+              ? { ...i, cantidad: nuevaCantidad, stock: action.item.stock ?? i.stock }
               : i
           ),
         };
       }
       return {
         ...state,
-        items: [...state.items, { ...action.item, cantidad: 1 }],
+        items: [...state.items, { ...action.item, cantidad: Math.min(1, maxPermitido) }],
       };
     }
 
@@ -82,11 +86,17 @@ function carritoReducer(state: CarritoState, action: CarritoAction): CarritoStat
       }
       return {
         ...state,
-        items: state.items.map((i) =>
-          i.productoSucursalId === action.productoSucursalId
-            ? { ...i, cantidad: Math.min(action.cantidad, i.maxCantidad) }
-            : i
-        ),
+        items: state.items.map((i) => {
+          if (i.productoSucursalId === action.productoSucursalId) {
+            const stockLimite = i.stock !== null && i.stock !== undefined ? Math.max(0, i.stock) : Infinity;
+            const maxPermitido = Math.min(i.maxCantidad, stockLimite);
+            return {
+              ...i,
+              cantidad: Math.min(action.cantidad, maxPermitido),
+            };
+          }
+          return i;
+        }),
       };
     }
 
