@@ -355,6 +355,9 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExit
                   {errorMsg}
                 </p>
               )}
+              <label className="text-xs italic text-gray-400">
+                *Autorizo el descuento en una sola exhibición por concepto de compra de fruta , conforme al Art. 110, Fracc. I de la LFT.
+              </label>
             </div>
           )}
         </div>
