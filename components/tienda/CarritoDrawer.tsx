@@ -33,6 +33,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExit
   const [noEmpleado, setNoEmpleado] = useState("");
   const [nombreEmpleado, setNombreEmpleado] = useState("");
   const [telefonoEmpleado, setTelefonoEmpleado] = useState("");
+  const [autorizaDescuento, setAutorizaDescuento] = useState(false);
   const [erroresCampos, setErroresCampos] = useState<Record<string, string>>({});
 
   const superoLimite = limiteCompra !== null && total > limiteCompra;
@@ -44,6 +45,9 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExit
     if (nombreEmpleado.trim().length < 2) errs.nombreEmpleado = "Ingresa tu nombre completo";
     if (telefonoEmpleado.trim() && telefonoEmpleado.trim().length < 10) {
       errs.telefonoEmpleado = "Ingresa un telefono valido (10 digitos)";
+    }
+    if (!autorizaDescuento) {
+      errs.autorizaDescuento = "Debes autorizar el descuento para confirmar el pedido";
     }
     setErroresCampos(errs);
     return Object.keys(errs).length === 0;
@@ -355,9 +359,27 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExit
                   {errorMsg}
                 </p>
               )}
-              <label className="text-xs italic text-gray-400">
-                *Autorizo el descuento en una sola exhibición por concepto de compra de fruta , conforme al Art. 110, Fracc. I de la LFT.
+              <label className="flex items-start gap-2 text-xs italic text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={autorizaDescuento}
+                  onChange={(e) => {
+                    setAutorizaDescuento(e.target.checked);
+                    setErroresCampos((actuales) => {
+                      const siguientes = { ...actuales };
+                      delete siguientes.autorizaDescuento;
+                      return siguientes;
+                    });
+                  }}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-green-600"
+                />
+                <span>
+                  Autorizo el descuento en una sola exhibición por concepto de compra de fruta, conforme al Art. 110, Fracc. I de la LFT.
+                </span>
               </label>
+              {erroresCampos.autorizaDescuento && (
+                <p className="text-xs text-red-500">{erroresCampos.autorizaDescuento}</p>
+              )}
             </div>
           )}
         </div>
@@ -422,7 +444,7 @@ export default function CarritoDrawer({ sucursalId, sucursalNombre, onPedidoExit
             </div>
             <button
               onClick={handleConfirmar}
-              disabled={enviando}
+              disabled={enviando || !autorizaDescuento}
               className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white
                 transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
