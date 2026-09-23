@@ -20,6 +20,7 @@ interface PedidoAdmin {
   noEmpleado: string;
   nombreEmpleado: string;
   emailEmpleado: string | null;
+  telefonoEmpleado: string | null;
   total: number;
   estado: string;
   createdAt: Date | string;
@@ -43,6 +44,12 @@ function formatDate(d: Date | string) {
 
 function formatShortDate(d: Date) {
   return new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short" }).format(d);
+}
+
+function telefonoWhatsApp(telefono: string) {
+  const digitos = telefono.replace(/\D/g, "");
+  if (digitos.length === 10) return `52${digitos}`;
+  return digitos;
 }
 
 export default function PedidosTable({ pedidos, sucursales }: Props) {
@@ -402,6 +409,25 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     }
   };
 
+  function crearEnlaceWhatsApp(pedido: PedidoAdmin) {
+    if (!pedido.telefonoEmpleado) return null;
+    const pedidoActual = pedidosLocal.find((p) => p.id === pedido.id) ?? pedido;
+    const items = pedidoActual.items
+      .map((item) => `${item.cantidad}x ${item.producto.nombre} ($${item.subtotal.toFixed(2)})`)
+      .join("\n");
+    const mensaje = [
+      `Hola ${pedido.nombreEmpleado}, te compartimos la información de tu pedido #${pedido.id}:`,
+      `Sucursal: ${pedido.sucursal.nombre}`,
+      `Estado: ${estados[pedido.id] ?? pedido.estado}`,
+      "",
+      items || "Sin productos",
+      "",
+      `Total: $${(totalesLocal[pedido.id] ?? pedido.total).toFixed(2)}`,
+      "Gracias por tu compra.",
+    ].join("\n");
+    return `https://wa.me/${telefonoWhatsApp(pedido.telefonoEmpleado)}?text=${encodeURIComponent(mensaje)}`;
+  }
+
   return (
     <div className="space-y-4">
       {/* Filtro por sucursal */}
@@ -595,6 +621,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                 </button>
               </th>
               <th className="px-4 py-3">Acciones</th>
+              <th className="px-4 py-3">WhatsApp</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -645,12 +672,28 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {crearEnlaceWhatsApp(p) ? (
+                      <a
+                        href={crearEnlaceWhatsApp(p) ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 hover:bg-green-200"
+                        title="Abrir WhatsApp con la información del pedido"
+                      >
+                        <span aria-hidden="true">&#x1F4AC;</span>
+                        Contactar
+                      </a>
+                    ) : (
+                      <span className="text-xs italic text-gray-300">Sin teléfono</span>
+                    )}
+                  </td>
                 </tr>
 
                 {/* Detalle expandible */}
                 {expandido === p.id && (
                   <tr key={`${p.id}-detail`} className="bg-green-50/40">
-                    <td colSpan={5} className="px-6 py-4">
+                    <td colSpan={6} className="px-6 py-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         <div className="flex-1">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
