@@ -13,7 +13,11 @@ export const ItemCarritoSchema = z.object({
 });
 
 export const CrearPedidoSchema = z.object({
-  noEmpleado: z.string().trim().min(1, "El número de empleado es requerido"),
+  noEmpleado: z
+    .string()
+    .trim()
+    .min(1, "El número de empleado es requerido")
+    .transform((value) => value.padStart(5, "0")),
   nombreEmpleado: z.string().trim().min(2, "El nombre es requerido"),
   emailEmpleado: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
   telefonoEmpleado: z.preprocess(
@@ -31,6 +35,10 @@ export const CrearPedidoSchema = z.object({
 
 export type ItemCarrito = z.infer<typeof ItemCarritoSchema>;
 export type CrearPedidoInput = z.infer<typeof CrearPedidoSchema>;
+
+export function formatearNoEmpleado(noEmpleado: string): string {
+  return noEmpleado.trim().padStart(5, "0");
+}
 
 // ── Helpers de utilidad ───────────────────────────────────────────────────────
 

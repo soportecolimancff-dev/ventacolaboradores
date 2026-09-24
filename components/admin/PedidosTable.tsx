@@ -46,6 +46,10 @@ function formatShortDate(d: Date) {
   return new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short" }).format(d);
 }
 
+function formatEmployeeNumber(noEmpleado: string) {
+  return noEmpleado.trim().padStart(5, "0");
+}
+
 function telefonoWhatsApp(telefono: string) {
   const digitos = telefono.replace(/\D/g, "");
   if (digitos.length === 10) return `52${digitos}`;
@@ -353,7 +357,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
       pedido.items.forEach((item, idx) => {
         pickingData.push([
           idx === 0 ? pedido.id : null,
-          idx === 0 ? pedido.noEmpleado : null,
+          idx === 0 ? formatEmployeeNumber(pedido.noEmpleado) : null,
           idx === 0 ? pedido.nombreEmpleado : null,
           idx === 0 ? (pedido.emailEmpleado ?? "—") : null,
           idx === 0 ? pedido.sucursal.nombre : null,
@@ -375,10 +379,21 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
       { wch: 20 }, { wch: 30 }, { wch: 10 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
     ];
 
+    const empleadosTotalesData: (string | number)[][] = [
+      ["No. Empleado", "Total Pedido"],
+      ...pagados.map((pedido) => [
+        formatEmployeeNumber(pedido.noEmpleado),
+        pedido.total,
+      ]),
+    ];
+    const wsEmpleadosTotales = XLSX.utils.aoa_to_sheet(empleadosTotalesData);
+    wsEmpleadosTotales["!cols"] = [{ wch: 16 }, { wch: 16 }];
+
     // ── Libro y descarga ─────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, wsPortada, "Resumen");
     XLSX.utils.book_append_sheet(wb, wsPicking, "Picking");
+    XLSX.utils.book_append_sheet(wb, wsEmpleadosTotales, "Empleado y Total");
 
     const nombreArchivo = `picking_semana${semanaNum}_${ahora.getFullYear()}.xlsx`;
     XLSX.writeFile(wb, nombreArchivo);
@@ -634,7 +649,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                 >
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{p.nombreEmpleado}</p>
-                    <p className="text-xs text-gray-400">#{p.noEmpleado} · {formatDate(p.createdAt)}</p>
+                    <p className="text-xs text-gray-400">#{formatEmployeeNumber(p.noEmpleado)} · {formatDate(p.createdAt)}</p>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{p.sucursal.nombre}</td>
                   <td className="px-4 py-3 font-bold text-green-700">

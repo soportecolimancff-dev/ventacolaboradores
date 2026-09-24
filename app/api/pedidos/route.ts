@@ -16,6 +16,7 @@ import { prisma } from "../../../lib/prisma";
 import { Prisma } from "../../generated/prisma/client";
 import {
   CrearPedidoSchema,
+  formatearNoEmpleado,
   getMondayUTC,
   type ErrorValidacion,
 } from "@/lib/validaciones";
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 
   const semana = getMondayUTC();
-  const noEmpleadoQ = searchParams.get("noEmpleado") ?? "";
+  const noEmpleadoQ = formatearNoEmpleado(searchParams.get("noEmpleado") ?? "");
   const pedido = await prisma.pedido.findFirst({
     where: {
       noEmpleado: noEmpleadoQ,
