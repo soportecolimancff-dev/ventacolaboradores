@@ -34,11 +34,11 @@ export type CrearPedidoInput = z.infer<typeof CrearPedidoSchema>;
 
 // ── Helpers de utilidad ───────────────────────────────────────────────────────
 
-/** Devuelve el lunes 00:00 UTC de la semana que contiene `date`. */
+/** Devuelve el jueves 00:00 UTC del periodo de pedidos que contiene `date`. */
 export function getMondayUTC(date: Date = new Date()): Date {
   const d = new Date(date);
   const day = d.getUTCDay();
-  const diff = day === 0 ? -6 : 1 - day;
+  const diff = day >= 4 ? 4 - day : -3 - day;
   d.setUTCDate(d.getUTCDate() + diff);
   d.setUTCHours(0, 0, 0, 0);
   return d;

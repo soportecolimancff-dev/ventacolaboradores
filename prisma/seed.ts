@@ -85,7 +85,7 @@ async function main() {
 
   console.log(`✅  ${productos.length} productos creados`);
 
-  // ── Catálogo semanal (semana del lunes más próximo) ──────────────────────
+  // ── Catálogo semanal (periodo de jueves a miércoles) ──────────────────────
   const semana = getMonday(new Date());
 
   for (const sucursal of sucursales) {
@@ -121,11 +121,11 @@ async function main() {
   console.log(`✅  Catálogo semanal sembrado para la semana del ${semana.toISOString().slice(0, 10)}`);
 }
 
-/** Devuelve el lunes de la semana que contiene la fecha dada (00:00 UTC). */
+/** Devuelve el jueves de inicio del periodo que contiene la fecha dada (00:00 UTC). */
 function getMonday(date: Date): Date {
   const d = new Date(date);
   const day = d.getUTCDay(); // 0 = domingo
-  const diff = day === 0 ? -6 : 1 - day;
+  const diff = day >= 4 ? 4 - day : -3 - day;
   d.setUTCDate(d.getUTCDate() + diff);
   d.setUTCHours(0, 0, 0, 0);
   return d;

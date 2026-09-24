@@ -143,13 +143,13 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     PAGADO: [],
   };
 
-  // Calcula el lunes UTC de la semana seleccionada (para hacer fetch al API)
+  // Calcula el jueves UTC del periodo seleccionado (para hacer fetch al API)
   const semanaUTC = useMemo(() => {
     const today = new Date();
     const base = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     base.setUTCDate(base.getUTCDate() + weekOffset * 7);
     const day = base.getUTCDay();
-    const diff = day === 0 ? -6 : 1 - day;
+    const diff = day >= 4 ? 4 - day : -3 - day;
     base.setUTCDate(base.getUTCDate() + diff);
     return base;
   }, [weekOffset]);
@@ -186,14 +186,14 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
     const offsetDays = weekOffset * 7;
     ref.setDate(ref.getDate() + offsetDays);
     const day = ref.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const monday = new Date(ref);
-    monday.setDate(ref.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    return { monday, sunday };
+    const diffToThursday = day >= 4 ? 4 - day : -3 - day;
+    const thursday = new Date(ref);
+    thursday.setDate(ref.getDate() + diffToThursday);
+    thursday.setHours(0, 0, 0, 0);
+    const wednesday = new Date(thursday);
+    wednesday.setDate(thursday.getDate() + 6);
+    wednesday.setHours(23, 59, 59, 999);
+    return { monday: thursday, sunday: wednesday };
   }, [weekOffset]);
 
   const pedidosFiltrados = useMemo(() => {
