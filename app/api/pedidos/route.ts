@@ -25,6 +25,30 @@ import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 // ── GET ───────────────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const pedidoId = Number(searchParams.get("pedidoId"));
+  const noEmpleado = formatearNoEmpleado(searchParams.get("noEmpleado") ?? "");
+
+  if (pedidoId) {
+    const pedido = await prisma.pedido.findFirst({
+      where: {
+        id: pedidoId,
+        noEmpleado,
+        semana: getMondayUTC(),
+        estado: { in: ["PENDIENTE", "CONFIRMADO"] },
+      },
+      include: {
+        sucursal: { select: { id: true, nombre: true, slug: true } },
+        items: { include: { producto: true } },
+      },
+    });
+
+    if (!pedido) {
+      return Response.json({ error: "Pedido no encontrado" }, { status: 404 });
+    }
+
+    return Response.json(pedido);
+  }
+
   const sucursalId = Number(searchParams.get("sucursalId"));
 
   if (!sucursalId) {
@@ -32,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 
   const semana = getMondayUTC();
-  const noEmpleadoQ = formatearNoEmpleado(searchParams.get("noEmpleado") ?? "");
+  const noEmpleadoQ = noEmpleado;
   const pedido = await prisma.pedido.findFirst({
     where: {
       noEmpleado: noEmpleadoQ,

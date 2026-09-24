@@ -25,6 +25,7 @@ type CarritoAction =
   | { type: "QUITAR"; productoSucursalId: number }
   | { type: "SET_CANTIDAD"; productoSucursalId: number; cantidad: number }
   | { type: "SET_LIMITE"; limite: { monto: number | null; cantidad: number | null } }
+  | { type: "CARGAR"; items: ItemCarrito[]; limite: { monto: number | null; cantidad: number | null } }
   | { type: "VACIAR" };
 
 interface CarritoContextValue extends CarritoState {
@@ -32,6 +33,7 @@ interface CarritoContextValue extends CarritoState {
   quitar: (productoSucursalId: number) => void;
   setCantidad: (productoSucursalId: number, cantidad: number) => void;
   setLimite: (limite: { monto: number | null; cantidad: number | null }) => void;
+  cargar: (items: ItemCarrito[], limite: { monto: number | null; cantidad: number | null }) => void;
   vaciar: () => void;
   total: number;
   itemCount: number;
@@ -107,6 +109,13 @@ function carritoReducer(state: CarritoState, action: CarritoAction): CarritoStat
         limiteCantidad: action.limite.cantidad,
       };
 
+    case "CARGAR":
+      return {
+        items: action.items,
+        limiteCompra: action.limite.monto,
+        limiteCantidad: action.limite.cantidad,
+      };
+
     case "VACIAR":
       return { ...state, items: [] };
 
@@ -149,6 +158,11 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "SET_LIMITE", limite }),
     []
   );
+  const cargar = useCallback(
+    (items: ItemCarrito[], limite: { monto: number | null; cantidad: number | null }) =>
+      dispatch({ type: "CARGAR", items, limite }),
+    []
+  );
   const vaciar = useCallback(() => dispatch({ type: "VACIAR" }), []);
 
   return (
@@ -163,6 +177,7 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
         quitar,
         setCantidad,
         setLimite,
+        cargar,
         vaciar,
       }}
     >

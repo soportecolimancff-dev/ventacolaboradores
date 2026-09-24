@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getMondayUTC } from "@/lib/validaciones";
 import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 import SucursalSelector from "@/components/tienda/SucursalSelector";
+import ConsultarPedido from "@/components/tienda/ConsultarPedido";
 
 export const metadata = {
   title: "Selecciona tu sucursal | Coliman Fruta",
@@ -23,7 +24,7 @@ export default async function TiendaPage() {
   const comprasAbiertas = limite?.comprasAbiertas ?? true;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-green-50 to-white px-4 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-green-50 to-white px-4 py-12">
       {/* Logo / encabezado */}
       <div className="mb-10 text-center">
         <p className="text-5xl mb-3">🍊</p>
@@ -32,6 +33,7 @@ export default async function TiendaPage() {
       </div>
 
       <div className="w-full max-w-md">
+        <ConsultarPedido />
         <SucursalSelector sucursales={sucursales} comprasAbiertas={comprasAbiertas} />
       </div>
     </main>

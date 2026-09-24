@@ -649,7 +649,7 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                 >
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{p.nombreEmpleado}</p>
-                    <p className="text-xs text-gray-400">#{formatEmployeeNumber(p.noEmpleado)} · {formatDate(p.createdAt)}</p>
+                    <p className="text-xs text-gray-400">Pedido #{p.id} · Empleado #{formatEmployeeNumber(p.noEmpleado)} · {formatDate(p.createdAt)}</p>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{p.sucursal.nombre}</td>
                   <td className="px-4 py-3 font-bold text-green-700">
