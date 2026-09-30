@@ -10,23 +10,34 @@ import { getMondayUTC } from "@/lib/validaciones";
 import { asegurarCatalogoSemana } from "@/lib/catalogoSemana";
 
 // GET – lista productos de la semana para todas las sucursales
+// Filtros opcionales: sucursalId, disponibles=1 (solo disponible + producto activo)
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const semanaParam = searchParams.get("semana");
   const semana = semanaParam ? new Date(semanaParam) : getMondayUTC();
+  const sucursalId = searchParams.get("sucursalId") ? Number(searchParams.get("sucursalId")) : undefined;
+  const soloDisponibles = searchParams.get("disponibles") === "1";
 
   await asegurarCatalogoSemana(semana);
 
   const items = await prisma.productoSucursal.findMany({
-    where: { semana },
+    where: {
+      semana,
+      ...(sucursalId ? { sucursalId } : {}),
+      ...(soloDisponibles ? { disponible: true, producto: { activo: true } } : {}),
+    },
     include: {
-      producto: { select: { id: true, nombre: true, imagenUrl: true } },
+      producto: {
+        select: { id: true, nombre: true, imagenUrl: true, activo: true, maxCantidad: true, cantidadPorCaja: true, unidad: true },
+      },
       sucursal: { select: { id: true, nombre: true, slug: true } },
     },
     orderBy: [{ sucursal: { nombre: "asc" } }, { producto: { nombre: "asc" } }],
   });
 
-  return Response.json(items);
+  const itemsSerial = items.map((i) => ({ ...i, precio: Number(i.precio) }));
+
+  return Response.json(itemsSerial);
 }
 
 const CrearItemSchema = z.object({

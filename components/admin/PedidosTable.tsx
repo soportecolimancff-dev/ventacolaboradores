@@ -21,11 +21,21 @@ interface PedidoAdmin {
   nombreEmpleado: string;
   emailEmpleado: string | null;
   telefonoEmpleado: string | null;
+  sucursalId: number;
+  semana: Date | string;
   total: number;
   estado: string;
   createdAt: Date | string;
   sucursal: { nombre: string };
   items: ItemPedidoAdmin[];
+}
+
+interface ProductoDisponible {
+  id: number; // productoSucursalId
+  productoId: number;
+  precio: number;
+  stock: number | null;
+  producto: { nombre: string; unidad: string; cantidadPorCaja: number; maxCantidad: number };
 }
 
 interface Sucursal {
@@ -108,6 +118,77 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
       setEditandoItem((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
     } finally {
       setCargandoItem(null);
+    }
+  };
+
+  // Catálogo disponible para agregar productos a un pedido (cache por sucursal+semana)
+  const [catalogoAbierto, setCatalogoAbierto] = useState<number | null>(null); // pedidoId con el picker abierto
+  const [catalogoCache, setCatalogoCache] = useState<Record<string, ProductoDisponible[]>>({});
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
+  const [nuevoProductoId, setNuevoProductoId] = useState<string>("");
+  const [nuevaCantidadProducto, setNuevaCantidadProducto] = useState<string>("1");
+  const [agregandoProducto, setAgregandoProducto] = useState(false);
+  const [errorAgregarProducto, setErrorAgregarProducto] = useState<string | null>(null);
+
+  const claveCatalogo = (pedido: PedidoAdmin) =>
+    `${pedido.sucursalId}-${new Date(pedido.semana).toISOString().slice(0, 10)}`;
+
+  const abrirCatalogo = async (pedido: PedidoAdmin) => {
+    setCatalogoAbierto(pedido.id);
+    setNuevoProductoId("");
+    setNuevaCantidadProducto("1");
+    setErrorAgregarProducto(null);
+    const key = claveCatalogo(pedido);
+    if (catalogoCache[key]) return;
+    setCargandoCatalogo(true);
+    try {
+      const semanaStr = new Date(pedido.semana).toISOString().slice(0, 10);
+      const res = await fetch(
+        `/api/admin/catalogo?semana=${semanaStr}&sucursalId=${pedido.sucursalId}&disponibles=1`
+      );
+      if (!res.ok) return;
+      const data: ProductoDisponible[] = await res.json();
+      setCatalogoCache((prev) => ({ ...prev, [key]: data }));
+    } finally {
+      setCargandoCatalogo(false);
+    }
+  };
+
+  const agregarProducto = async (pedido: PedidoAdmin) => {
+    const productoSucursalId = Number(nuevoProductoId);
+    const cantidad = parseInt(nuevaCantidadProducto, 10);
+    if (!productoSucursalId || isNaN(cantidad) || cantidad < 1) return;
+    setAgregandoProducto(true);
+    setErrorAgregarProducto(null);
+    try {
+      const res = await fetch(`/api/admin/pedidos/${pedido.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productoSucursalId, cantidad }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorAgregarProducto(data.error ?? "No se pudo agregar el producto");
+        return;
+      }
+      setPedidosLocal((prev) =>
+        prev.map((p) => {
+          if (p.id !== pedido.id) return p;
+          const existe = p.items.some((i) => i.productoId === data.item.productoId);
+          const items = existe
+            ? p.items.map((i) =>
+                i.productoId === data.item.productoId
+                  ? { ...i, cantidad: data.item.cantidad, subtotal: data.item.subtotal }
+                  : i
+              )
+            : [...p.items, data.item];
+          return { ...p, total: data.pedido.total, items };
+        })
+      );
+      setTotalesLocal((prev) => ({ ...prev, [pedido.id]: data.pedido.total }));
+      setCatalogoAbierto(null);
+    } finally {
+      setAgregandoProducto(false);
     }
   };
 
@@ -802,6 +883,71 @@ export default function PedidosTable({ pedidos, sucursales }: Props) {
                               );
                             })}
                           </ul>
+
+                          {filtroSucursal !== "todas" && estados[p.id] === "PENDIENTE" && (
+                            <div className="mt-3">
+                              {catalogoAbierto === p.id ? (
+                                <div className="rounded-lg border border-green-200 bg-white p-3 space-y-2">
+                                  {cargandoCatalogo ? (
+                                    <p className="text-xs text-gray-400">Cargando catálogo...</p>
+                                  ) : (catalogoCache[claveCatalogo(p)] ?? []).length === 0 ? (
+                                    <p className="text-xs text-gray-400">No hay productos disponibles esta semana para esta sucursal.</p>
+                                  ) : (
+                                    <>
+                                      <select
+                                        value={nuevoProductoId}
+                                        onChange={(e) => setNuevoProductoId(e.target.value)}
+                                        className="w-full rounded-lg border border-gray-200 px-2 py-1 text-sm"
+                                      >
+                                        <option value="">Selecciona un producto...</option>
+                                        {(catalogoCache[claveCatalogo(p)] ?? []).map((prod) => (
+                                          <option key={prod.id} value={prod.id}>
+                                            {prod.producto.nombre} — ${prod.precio.toFixed(2)}
+                                            {prod.stock !== null ? ` (stock: ${prod.stock})` : ""}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          step="1"
+                                          value={nuevaCantidadProducto}
+                                          onChange={(e) => setNuevaCantidadProducto(e.target.value)}
+                                          className="w-20 rounded-lg border border-gray-200 px-2 py-1 text-center text-sm"
+                                        />
+                                        <button
+                                          disabled={!nuevoProductoId || agregandoProducto}
+                                          onClick={() => agregarProducto(p)}
+                                          className="rounded-lg px-3 py-1 text-xs font-bold disabled:opacity-40"
+                                          style={{ background: "#15803d", color: "#fff" }}
+                                        >
+                                          {agregandoProducto ? "Agregando..." : "Agregar"}
+                                        </button>
+                                        <button
+                                          onClick={() => setCatalogoAbierto(null)}
+                                          className="rounded-lg px-2 py-1 text-xs font-medium text-gray-500"
+                                        >
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                  {errorAgregarProducto && (
+                                    <p className="text-xs font-medium text-red-600">{errorAgregarProducto}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => abrirCatalogo(p)}
+                                  className="rounded-lg px-3 py-1 text-xs font-semibold"
+                                  style={{ background: "#f0fdf4", color: "#15803d", border: "1px dashed #86efac" }}
+                                >
+                                  + Agregar producto
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="shrink-0 rounded-xl border border-green-200 bg-white px-5 py-3 text-right">
                           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total pedido</p>
