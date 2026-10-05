@@ -9,6 +9,9 @@ import { obtenerLimiteSemana } from "@/lib/limiteSemana";
 import SucursalSelector from "@/components/tienda/SucursalSelector";
 import ConsultarPedido from "@/components/tienda/ConsultarPedido";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Selecciona tu sucursal | Coliman Fruta",
 };
