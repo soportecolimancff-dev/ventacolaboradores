@@ -33,6 +33,11 @@ const COLORES_SUCURSAL: Record<string, { bg: string; border: string; icon: strin
     border: "border-green-400",
     icon: "⚓",
   },
+  "fresh-cut": {
+    bg: "bg-red-50",
+    border: "border-red-400",
+    icon: "🧄",
+  },
 };
 
 interface Props {
