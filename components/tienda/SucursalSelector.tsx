@@ -36,7 +36,7 @@ const COLORES_SUCURSAL: Record<string, { bg: string; border: string; icon: strin
   "fresh-cut": {
     bg: "bg-red-50",
     border: "border-red-400",
-    icon: "🧄",
+    icon: "🌄",
   },
 };
 
